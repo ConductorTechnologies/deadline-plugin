@@ -1,2 +1,2 @@
-# deadline_plugin
-Conductor plugin for Deadline
+# Deadline Plugin
+Please see https://docs.conductortech.com/#client_tools/deadline/
