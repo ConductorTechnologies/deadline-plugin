@@ -9,7 +9,6 @@ from DeadlineUI.Controls.Scripting.DeadlineScriptDialog import DeadlineScriptDia
 import conductor
 from conductor.__beta__ import job as conductorjob
 
-
 class ConductorSubmitDialog(DeadlineScriptDialog):
     
     def __init__(self, deadlineJob, *args, **kwargs):
@@ -21,8 +20,8 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         self.selectedInstanceType = None
         self.jobTitle = ""
         self.instanceTypes = []
-        
-        self._buildUI()
+
+	self._buildUI()
         
     def _buildUI(self):
         
@@ -100,16 +99,18 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         conductorJob.job_title = self.jobNameTextBox.text()
         conductorJob.output_path = self.deadlineJob.GetJobInfoKeyValue("OutputDirectory0").replace("\\", "/")
         conductorJob.preemptible = self.preemptibleCheckBox.isChecked()
+        conductorJob.software_packages_ids = conductorJob.get_package_ids_for_deadline_job(self.deadlineJob)
         
         conductorJob.deadline_proxy_root = os.environ.get('CONDUCTOR_DEADLINE_PROXY')
-        conductorJob.set_deadline_ssl_certificate(os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE'))        
+        conductorJob.set_deadline_ssl_certificate(os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE'))
+        conductorJob.deadline_use_ssl = False
             
         dependencySidecarPath = self.dependencyBox.text()
         
         with open(dependencySidecarPath, 'r') as fh:
             dependencies = json.load(fh)
 
-        conductorJob.upload_paths.extend(dependencies['dependencies'])        
+        conductorJob.upload_paths.extend(dependencies['dependencies'])
         
         groupName = "conductorautogroup_{}".format(self.deadlineJob.JobId)
         groups = list(Deadline.Scripting.RepositoryUtils.GetGroupNames())
@@ -120,6 +121,9 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         Deadline.Scripting.RepositoryUtils.AddGroup(groupName)
 
         self.deadlineJob.JobGroup = groupName
+        conductorJob.deadline_group_name = groupName
+        
+        conductorJobId = conductorJob.submit_job()
     
         # This script is present on the Deadline worker
         self.deadlineJob.JobPostTaskScript = conductorJob.POST_TASK_SCRIPT_PATH
@@ -150,5 +154,5 @@ def __main__( *args ):
 
     for deadlineJob in selectedJobs:
 
-        dialog = ConductorSubmitDialog(deadlineJob=deadlineJob)        
-        dialog.ShowDialog( True )
+        dialog = ConductorSubmitDialog(deadlineJob=deadlineJob)
+        result = dialog.ShowDialog( True )
