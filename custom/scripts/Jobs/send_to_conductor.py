@@ -2,6 +2,9 @@ import os
 import operator
 import json
 import PyQt5.QtWidgets
+import logging
+
+logging.basicConfig()
 
 import Deadline.Scripting
 from DeadlineUI.Controls.Scripting.DeadlineScriptDialog import DeadlineScriptDialog
@@ -105,7 +108,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         conductorJob.set_deadline_ssl_certificate(os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE'))
         conductorJob.deadline_use_ssl = False
         
-        conductorJob.software_packages_ids = conductor_deadline.package_mapper.get_package_ids_for_deadline_job.DeadlineToConductorPackageMapper.map(self.deadlineJob)        
+        conductorJob.software_packages_ids = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.map(self.deadlineJob)        
             
         dependencySidecarPath = self.dependencyBox.text()
         

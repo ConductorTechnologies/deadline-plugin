@@ -1,15 +1,43 @@
 import logging
 
-import conductor
-
-LOG = logging.getLogger(__name__)     
+LOG = logging.getLogger(__name__)
+LOG.setLevel(10)
 
 class DeadlineToConductorPackageMapper(object):
+    '''
+    A class for mapping a Deadline Job Plugin to a set of Conductor package ID's.
     
-    PLUGIN_TO_PACKAGE_MAPPING = {}
+    This class is only directly responsible for mapping a Deadling Job Plugin to
+    a corresponding DeadlinePluginMapper class. See that class for more details
+    on implementation.
+    
+    To customize mapping behaviour changes should be made to the set of 
+    DeadlinePluginMapper classes - not this class.
+    
+    All DeadlinePluginMapper classes must register with this class by calling
+    register(). Only one DeadlinePluginMapper class can be reigsted at a time
+    for each Deadline Job Plugin. Though one DeadlinePluginMapper class could
+    be mapped to multiple Deadline Job Plugins (ex: MayaCmd and MayaBatch could
+    both use :py:class:`~MayaCmdMapper`.
+    
+    '''
+
+    PLUGIN_TO_PACKAGE_MAPPING = None
     
     @classmethod
     def map(cls, deadline_job):
+        '''
+        Get the corresponding Conductor package ID's for the given Deadline job
+        
+        :param deaadline_job: The Deadline job to map
+        :type deadline_job: :py:class:`~Deadline.Jobs.Job`
+        
+        :returns: A list of package ID's
+        :rtype: list of str
+        '''
+        
+        if cls.PLUGIN_TO_PACKAGE_MAPPING is None:
+            import plugin_mappers
         
         plugin_name = deadline_job.GetJobInfoKeyValue("Plugin")
         map_class = cls.PLUGIN_TO_PACKAGE_MAPPING.get(plugin_name, None)
@@ -19,68 +47,27 @@ class DeadlineToConductorPackageMapper(object):
         
         LOG.debug("Using mapping class '{}' for plugin '{}'".format(map_class, plugin_name))
         
+        
         return map_class.map(deadline_job)
 
     @classmethod
     def register(cls, mapping_class):
+        '''
+        Register a DeadlinePluginMapper class.
+        
+        :param mapping_class: The mapping class to register
+        :type mapping_class: :py:class:`~DeadlinePluginMapper`
+        
+        :return: None
+        '''
+        
+        if cls.PLUGIN_TO_PACKAGE_MAPPING is None:
+            cls.PLUGIN_TO_PACKAGE_MAPPING = {}
         
         for plugin in mapping_class.DEADLINE_PLUGINS:
             
             if plugin in cls.PLUGIN_TO_PACKAGE_MAPPING:
                 raise Exception("The plugin '{}' has already been registered with the class {}".format(cls.PLUGIN_TO_PACKAGE_MAPPING[plugin]))
             
-            LOG.debug("Registering mapping plugin '{}' to class '{}'".format(plugin, mapping_class))
-            cls.PLUGIN_TO_PACKAGE_MAPPING[plugin] = mapping_class
-    
-
-class MayaCmdMapper(object):
-    
-    DEADLINE_PLUGINS = ["MayaCmd"]
-    PRODUCT_NAME = "maya-io"
-    
-    product_version_map = {"2018": "Autodesk Maya 2018.6"}
-    render_version_map = {'Arnold': {'plugin': 'arnold-maya', 'version': 'latest'},
-                          'Vray': {'plugin': 'v-ray-maya', 'version': 'latest'},
-                          'Renderman': {'plugin': 'renderman-maya', 'version': 'latest'}}
-    
-    @classmethod
-    def map(cls, deadline_job):
-        
-        package_ids = []
-        
-        render_name = deadline_job.GetJobPluginInfoKeyValue("Renderer")
-        major_version = deadline_job.GetJobPluginInfoKeyValue("Version")
-        product_version = cls.product_version_map[major_version]
-        
-        if render_name == "File":
-            raise Exception("Integration doesn't support 'File', please explicitly choose a renderer in the MayCmd plugin properties")
-        
-        if render_name not in cls.render_version_map:
-            raise Exception("The render '{}' is not currently support by the Conductor Deadline integration.".format(render_name))
-        
-        host_package = conductor.lib.package_utils.get_host_package(cls.PRODUCT_NAME, product_version, strict=False)
-        LOG.debug("Found package: {}".format(host_package))
-        package_ids.append(host_package.get("package"))
-        
-        conductor_render_plugin = cls.render_version_map[render_name]
-        
-        if conductor_render_plugin['version'] == 'latest':
-            render_plugin_versions = host_package[conductor_render_plugin['plugin']].keys()
-            render_plugin_versions.sort()
-            render_plugin_version = render_plugin_versions[-1]
-            
-        else:
-            if conductor_render_plugin['version'] not in conductor_render_plugin['plugin'].keys():
-                raise Exception("Unable to find {plugin} version '{verision}' in Conductor packages".format(conductor_render_plugin))
-            
-            render_plugin_version = conductor_render_plugin['plugin']
-            
-        LOG.debug("Using render: {} {} {}".format(conductor_render_plugin, render_plugin_version, host_package[conductor_render_plugin['plugin']][render_plugin_version]))
-        
-        render_package_id = host_package[conductor_render_plugin['plugin']][render_plugin_version]
-        package_ids.append(render_package_id)
-
-        return package_ids
-    
-    
-DeadlineToConductorPackageMapper.register(MayaCmdMapper) 
+            LOG.debug("Registering mapping plugin '{}' to class '{}'".format(plugin, mapping_class))            
+            cls.PLUGIN_TO_PACKAGE_MAPPING[plugin] = mapping_class            
