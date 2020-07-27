@@ -8,6 +8,7 @@ from DeadlineUI.Controls.Scripting.DeadlineScriptDialog import DeadlineScriptDia
 
 import conductor
 from conductor.__beta__ import job as conductorjob
+import conductor_deadline.package_mapper
 
 class ConductorSubmitDialog(DeadlineScriptDialog):
     
@@ -98,12 +99,13 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         conductorJob.instance_count = self.deadlineJob.TaskCount
         conductorJob.job_title = self.jobNameTextBox.text()
         conductorJob.output_path = self.deadlineJob.GetJobInfoKeyValue("OutputDirectory0").replace("\\", "/")
-        conductorJob.preemptible = self.preemptibleCheckBox.isChecked()
-        conductorJob.software_packages_ids = conductorJob.get_package_ids_for_deadline_job(self.deadlineJob)
+        conductorJob.preemptible = self.preemptibleCheckBox.isChecked()        
         
         conductorJob.deadline_proxy_root = os.environ.get('CONDUCTOR_DEADLINE_PROXY')
         conductorJob.set_deadline_ssl_certificate(os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE'))
         conductorJob.deadline_use_ssl = False
+        
+        conductorJob.software_packages_ids = conductor_deadline.package_mapper.get_package_ids_for_deadline_job.DeadlineToConductorPackageMapper.map(self.deadlineJob)        
             
         dependencySidecarPath = self.dependencyBox.text()
         
