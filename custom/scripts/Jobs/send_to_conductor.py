@@ -106,7 +106,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         
         conductorJob.deadline_proxy_root = os.environ.get('CONDUCTOR_DEADLINE_PROXY')
         conductorJob.set_deadline_ssl_certificate(os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE'))
-        conductorJob.deadline_use_ssl = False
+        conductorJob.deadline_use_ssl = bool(os.environ.get('CONDUCTOR_DEADLINE_USE_SSL', False))
         
         conductorJob.software_packages_ids = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.map(self.deadlineJob)        
             
