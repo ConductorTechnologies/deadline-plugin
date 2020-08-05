@@ -32,6 +32,8 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         instanceTypes = conductor.lib.api_client.request_instance_types()
         self.instanceTypes = sorted(instanceTypes, key=operator.itemgetter("cores", "memory"), reverse=False)
         
+        projects = conductor.CONFIG.get("projects") or conductor.lib.api_client.request_projects()
+        
         self.resize(700, 225)
         
         self.SetTitle("Conductor Submit")
@@ -43,7 +45,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         self.jobNameTextBox = self.AddControlToGrid( "NameBox", "TextControl", "[DEADLINE WORKER] {}".format(self.deadlineJob.JobName), 1, 1 )
     
         self.AddControlToGrid( "ProjectLabel", "LabelControl", "Project", 2, 0 , "The Conductor project", False )
-        self.AddControlToGrid( "ProjectBox", "TextControl", "default", 2, 1 )
+        self.projectBox = self.AddControlToGrid( "ProjectBox", "ComboControl", "default", 2, 1 )
         self.AddControlToGrid( "DependencyLabel", "LabelControl", "Dependency Sidecar", 3, 0 , "JSON file with all the dependencies", False )
         self.dependencyBox = self.AddControlToGrid( "DependencyBox", "TextControl", "", 3, 1 )
         self.dependencyButton = self.AddControlToGrid( "DependencyButton", "ButtonControl", "Choose file...", 3, 2, expand=False )
@@ -56,7 +58,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         self.instanceTypeCombo = self.AddControlToGrid( "InstanceBox", "ComboControl", "", 1, 1 )        
         self.preemptibleCheckBox = self.AddSelectionControlToGrid( "IsPreemptible", "CheckBoxControl", True, "Preemptible", 1, 2, "The machine may get preempted" )
         self.EndGrid()
-        
+
         # Add control buttons
         self.AddGrid()
         self.AddHorizontalSpacerToGrid( "HSpacer", 0, 0 )
@@ -73,6 +75,10 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         self.selectedInstanceType = self.instanceTypes[0]['name']            
         self.instanceTypeCombo.currentIndexChanged.connect( self.onInstanceTypeChanged )
         
+        # sort alphabetically. may be unicode, so can't use str.lower directly
+        for project in sorted(projects, key=lambda x: x.lower()):
+            self.projectBox.addItem(project)
+  
         # Set the sidecar dependency (if it exists)
         dependencySidecarFile = self.getDependencySidecarFileFromPath()
         
@@ -102,7 +108,8 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         conductorJob.instance_count = self.deadlineJob.TaskCount
         conductorJob.job_title = self.jobNameTextBox.text()
         conductorJob.output_path = self.deadlineJob.GetJobInfoKeyValue("OutputDirectory0").replace("\\", "/")
-        conductorJob.preemptible = self.preemptibleCheckBox.isChecked()        
+        conductorJob.preemptible = self.preemptibleCheckBox.isChecked()       
+        conductorJob.project = self.projectBox.currentText() 
         
         conductorJob.deadline_proxy_root = os.environ.get('CONDUCTOR_DEADLINE_PROXY')
         conductorJob.set_deadline_ssl_certificate(os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE'))
@@ -138,7 +145,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         
     def onCancelButtonClicked(self):
         super( ConductorSubmitDialog, self ).reject()
-    
+
     def onInstanceTypeChanged(self):
         
         instanceValue = self.instanceTypeCombo.currentText()
