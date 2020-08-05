@@ -49,6 +49,8 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         instanceTypes = conductor.lib.api_client.request_instance_types()
         self.instanceTypes = sorted(instanceTypes, key=operator.itemgetter("cores", "memory"), reverse=False)
         
+        projects = conductor.CONFIG.get("projects") or conductor.lib.api_client.request_projects()
+        
         self.resize(700, 225)
         
         self.SetTitle("Conductor Submit")
@@ -60,7 +62,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         self.jobNameTextBox = self.AddControlToGrid( "NameBox", "TextControl", "[DEADLINE WORKER] {}".format(self.deadlineJob.JobName), 1, 1 )
     
         self.AddControlToGrid( "ProjectLabel", "LabelControl", "Project", 2, 0 , "The Conductor project", False )
-        self.AddControlToGrid( "ProjectBox", "TextControl", "default", 2, 1 )
+        self.projectBox = self.AddControlToGrid( "ProjectBox", "ComboControl", "default", 2, 1 )
         self.AddControlToGrid( "DependencyLabel", "LabelControl", "Dependency Sidecar", 3, 0 , "JSON file with all the dependencies", False )
         self.dependencyBox = self.AddControlToGrid( "DependencyBox", "TextControl", "", 3, 1 )
         self.dependencyButton = self.AddControlToGrid( "DependencyButton", "ButtonControl", "Choose file...", 3, 2, expand=False )
@@ -90,6 +92,10 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         self.selectedInstanceType = self.instanceTypes[0]['name']            
         self.instanceTypeCombo.currentIndexChanged.connect( self.onInstanceTypeChanged )
         
+        # sort alphabetically. may be unicode, so can't use str.lower directly
+        for project in sorted(projects, key=lambda x: x.lower()):
+            self.projectBox.addItem(project)
+  
         # Set the sidecar dependency (if it exists)
         dependencySidecarFile = self.getDependencySidecarFileFromPath()
         
@@ -112,53 +118,45 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
             self.dependencyBox.setText(selectedSidecarFile)
                 
     def onOKButtonClicked(self): 
+    
+        conductorJob = conductorjob.DeadlineWorkerJob()
+        conductorJob.environment['DEADLINE_JOBID'] = self.deadlineJob.JobId
+        conductorJob.instance_type = self.selectedInstanceType
+        conductorJob.instance_count = self.deadlineJob.TaskCount
+        conductorJob.job_title = self.jobNameTextBox.text()
+        conductorJob.output_path = self.deadlineJob.GetJobInfoKeyValue("OutputDirectory0").replace("\\", "/")
+        conductorJob.preemptible = self.preemptibleCheckBox.isChecked()       
+        conductorJob.project = self.projectBox.currentText() 
         
-        try:
-    
-            conductorJob = conductorjob.DeadlineWorkerJob()
-            conductorJob.environment['DEADLINE_JOBID'] = self.deadlineJob.JobId
-            conductorJob.instance_type = self.selectedInstanceType
-            conductorJob.instance_count = self.deadlineJob.TaskCount
-            conductorJob.job_title = self.jobNameTextBox.text()
-            conductorJob.output_path = self.deadlineJob.GetJobInfoKeyValue("OutputDirectory0").replace("\\", "/")
-            conductorJob.preemptible = self.preemptibleCheckBox.isChecked()        
-            
-            conductorJob.deadline_proxy_root = os.environ.get('CONDUCTOR_DEADLINE_PROXY')
-            conductorJob.set_deadline_ssl_certificate(os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE'))
-            conductorJob.deadline_use_ssl = True
-            
-            conductorJob.software_packages_ids = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.map(self.deadlineJob)        
-                
-            dependencySidecarPath = self.dependencyBox.text()
-            
-            with open(dependencySidecarPath, 'r') as fh:
-                dependencies = json.load(fh)
-    
-            conductorJob.upload_paths.extend(dependencies['dependencies'])
-            
-            groupName = "conductorautogroup_{}".format(self.deadlineJob.JobId)
-            groups = list(Deadline.Scripting.RepositoryUtils.GetGroupNames())
-            
-            if groupName in groups:
-                Deadline.Scripting.RepositoryUtils.DeleteGroup(groupName)
-            
-            Deadline.Scripting.RepositoryUtils.AddGroup(groupName)
-    
-            self.deadlineJob.JobGroup = groupName
-            conductorJob.deadline_group_name = groupName
-            
-            conductorJobId = conductorJob.submit_job()
+        conductorJob.deadline_proxy_root = os.environ.get('CONDUCTOR_DEADLINE_PROXY')
+        conductorJob.set_deadline_ssl_certificate(os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE'))
+        conductorJob.deadline_use_ssl = bool(os.environ.get('CONDUCTOR_DEADLINE_USE_SSL', False))
         
-            # This script is present on the Deadline worker
-            self.deadlineJob.JobPostTaskScript = conductorJob.POST_TASK_SCRIPT_PATH
-            Deadline.Scripting.RepositoryUtils.SaveJob(self.deadlineJob)
+        conductorJob.software_packages_ids = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.map(self.deadlineJob)        
             
-        except Exception, errMsg:
-            error_dialog = ConductorErrorDialog(errMsg)
-            error_dialog.ShowDialog(True)            
-            super( ConductorSubmitDialog, self ).reject()
-            raise
-                   
+        dependencySidecarPath = self.dependencyBox.text()
+        
+        with open(dependencySidecarPath, 'r') as fh:
+            dependencies = json.load(fh)
+
+        conductorJob.upload_paths.extend(dependencies['dependencies'])
+        
+        groupName = "conductorautogroup_{}".format(self.deadlineJob.JobId)
+        groups = list(Deadline.Scripting.RepositoryUtils.GetGroupNames())
+        
+        if groupName in groups:
+            Deadline.Scripting.RepositoryUtils.DeleteGroup(groupName)
+        
+        Deadline.Scripting.RepositoryUtils.AddGroup(groupName)
+
+        self.deadlineJob.JobGroup = groupName
+        conductorJob.deadline_group_name = groupName
+        
+        conductorJobId = conductorJob.submit_job()
+    
+        # This script is present on the Deadline worker
+        self.deadlineJob.JobPostTaskScript = conductorJob.POST_TASK_SCRIPT_PATH
+        Deadline.Scripting.RepositoryUtils.SaveJob(self.deadlineJob)
         
         super( ConductorSubmitDialog, self ).accept()
         
