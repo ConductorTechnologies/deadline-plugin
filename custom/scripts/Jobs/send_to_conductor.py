@@ -118,45 +118,53 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
             self.dependencyBox.setText(selectedSidecarFile)
                 
     def onOKButtonClicked(self): 
+        
+        try:
     
-        conductorJob = conductorjob.DeadlineWorkerJob()
-        conductorJob.environment['DEADLINE_JOBID'] = self.deadlineJob.JobId
-        conductorJob.instance_type = self.selectedInstanceType
-        conductorJob.instance_count = self.deadlineJob.TaskCount
-        conductorJob.job_title = self.jobNameTextBox.text()
-        conductorJob.output_path = self.deadlineJob.GetJobInfoKeyValue("OutputDirectory0").replace("\\", "/")
-        conductorJob.preemptible = self.preemptibleCheckBox.isChecked()       
-        conductorJob.project = self.projectBox.currentText() 
-        
-        conductorJob.deadline_proxy_root = os.environ.get('CONDUCTOR_DEADLINE_PROXY')
-        conductorJob.set_deadline_ssl_certificate(os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE'))
-        conductorJob.deadline_use_ssl = bool(os.environ.get('CONDUCTOR_DEADLINE_USE_SSL', False))
-        
-        conductorJob.software_packages_ids = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.map(self.deadlineJob)        
-            
-        dependencySidecarPath = self.dependencyBox.text()
-        
-        with open(dependencySidecarPath, 'r') as fh:
-            dependencies = json.load(fh)
+		conductorJob = conductorjob.DeadlineWorkerJob()
+		conductorJob.environment['DEADLINE_JOBID'] = self.deadlineJob.JobId
+		conductorJob.instance_type = self.selectedInstanceType
+		conductorJob.instance_count = self.deadlineJob.TaskCount
+		conductorJob.job_title = self.jobNameTextBox.text()
+		conductorJob.output_path = self.deadlineJob.GetJobInfoKeyValue("OutputDirectory0").replace("\\", "/")
+		conductorJob.preemptible = self.preemptibleCheckBox.isChecked()       
+		conductorJob.project = self.projectBox.currentText() 
+		
+		conductorJob.deadline_proxy_root = os.environ.get('CONDUCTOR_DEADLINE_PROXY')
+		conductorJob.set_deadline_ssl_certificate(os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE'))
+		conductorJob.deadline_use_ssl = bool(os.environ.get('CONDUCTOR_DEADLINE_USE_SSL', False))
+		
+		conductorJob.software_packages_ids = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.map(self.deadlineJob)        
+		    
+		dependencySidecarPath = self.dependencyBox.text()
+		
+		with open(dependencySidecarPath, 'r') as fh:
+		    dependencies = json.load(fh)
 
-        conductorJob.upload_paths.extend(dependencies['dependencies'])
-        
-        groupName = "conductorautogroup_{}".format(self.deadlineJob.JobId)
-        groups = list(Deadline.Scripting.RepositoryUtils.GetGroupNames())
-        
-        if groupName in groups:
-            Deadline.Scripting.RepositoryUtils.DeleteGroup(groupName)
-        
-        Deadline.Scripting.RepositoryUtils.AddGroup(groupName)
+		conductorJob.upload_paths.extend(dependencies['dependencies'])
+		
+		groupName = "conductorautogroup_{}".format(self.deadlineJob.JobId)
+		groups = list(Deadline.Scripting.RepositoryUtils.GetGroupNames())
+		
+		if groupName in groups:
+		    Deadline.Scripting.RepositoryUtils.DeleteGroup(groupName)
+		
+		Deadline.Scripting.RepositoryUtils.AddGroup(groupName)
 
-        self.deadlineJob.JobGroup = groupName
-        conductorJob.deadline_group_name = groupName
-        
-        conductorJobId = conductorJob.submit_job()
-    
-        # This script is present on the Deadline worker
-        self.deadlineJob.JobPostTaskScript = conductorJob.POST_TASK_SCRIPT_PATH
-        Deadline.Scripting.RepositoryUtils.SaveJob(self.deadlineJob)
+		self.deadlineJob.JobGroup = groupName
+		conductorJob.deadline_group_name = groupName
+		
+		conductorJobId = conductorJob.submit_job()
+	    
+		# This script is present on the Deadline worker
+		self.deadlineJob.JobPostTaskScript = conductorJob.POST_TASK_SCRIPT_PATH
+		Deadline.Scripting.RepositoryUtils.SaveJob(self.deadlineJob)
+
+        except Exception, errMsg:
+            error_dialog = ConductorErrorDialog(errMsg)
+            error_dialog.exec_()            
+            super( ConductorSubmitDialog, self ).reject()
+            raise
         
         super( ConductorSubmitDialog, self ).accept()
         
