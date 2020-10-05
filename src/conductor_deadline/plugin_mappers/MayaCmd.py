@@ -5,7 +5,6 @@ import conductor
 import deadline_plugin_mapper
 
 LOG = logging.getLogger(__name__)
-LOG.setLevel(10)
 
 
 class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
@@ -88,4 +87,12 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
         package_ids.append(render_package_id)
 
         return package_ids
+    
+    @classmethod
+    def get_output_path(cls, deadline_job):
+        '''
+        Get the output path for the given deadline job
+        '''
+           
+        return deadline_job.GetJobInfoKeyValue("OutputDirectory0").replace("\\", "/") 
         

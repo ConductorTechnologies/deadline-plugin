@@ -125,8 +125,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
             conductorJob.environment['DEADLINE_JOBID'] = self.deadlineJob.JobId
             conductorJob.instance_type = self.selectedInstanceType
             conductorJob.instance_count = self.deadlineJob.TaskCount
-            conductorJob.job_title = self.jobNameTextBox.text()
-            conductorJob.output_path = self.deadlineJob.GetJobInfoKeyValue("OutputDirectory0").replace("\\", "/")
+            conductorJob.job_title = self.jobNameTextBox.text()            
             conductorJob.preemptible = self.preemptibleCheckBox.isChecked()       
             conductorJob.project = self.projectBox.currentText() 
             
@@ -134,7 +133,8 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
             conductorJob.set_deadline_ssl_certificate(os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE'))
             conductorJob.deadline_use_ssl = bool(os.environ.get('CONDUCTOR_DEADLINE_USE_SSL', False))
             
-            conductorJob.software_packages_ids = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.map(self.deadlineJob)        
+            conductorJob.software_packages_ids = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.map(self.deadlineJob)
+            conductorJob.output_path = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.get_output_path(self.deadlineJob)                  
                 
             dependencySidecarPath = self.dependencyBox.text()
             
@@ -153,7 +153,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
     
             self.deadlineJob.JobGroup = groupName
             conductorJob.deadline_group_name = groupName
-            
+
             conductorJobId = conductorJob.submit_job()
             
             # This script is present on the Deadline worker
