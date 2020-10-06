@@ -130,8 +130,8 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
             conductorJob.project = self.projectBox.currentText() 
             
             conductorJob.deadline_proxy_root = os.environ.get('CONDUCTOR_DEADLINE_PROXY')
-            conductorJob.set_deadline_ssl_certificate(os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE'))
-            conductorJob.deadline_use_ssl = bool(os.environ.get('CONDUCTOR_DEADLINE_USE_SSL', False))
+            conductorJob.set_deadline_ssl_certificate(os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE', ""))
+            conductorJob.deadline_use_ssl = self.to_bool(os.environ.get('CONDUCTOR_DEADLINE_USE_SSL', ""))
             
             conductorJob.software_packages_ids = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.map(self.deadlineJob)
             conductorJob.output_path = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.get_output_path(self.deadlineJob)                  
@@ -184,6 +184,10 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         scenePath = self.deadlineJob.GetJobPluginInfoKeyValue('SceneFile')            
         dependencySideCarFile = "{}.cdepends".format(scenePath)
         return dependencySideCarFile
+    
+    @staticmethod
+    def to_bool(value):        
+        return value.lower() not in ('0', 'false', 'no')
 
 
 def __main__( *args ):
