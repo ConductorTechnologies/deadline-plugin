@@ -157,7 +157,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
             conductorJobId = conductorJob.submit_job()
             
             # This script is present on the Deadline worker
-            self.deadlineJob.JobPostTaskScript = conductorJob.POST_TASK_SCRIPT_PATH
+            self.deadlineJob.JobPostTaskScript = conductorJob.get_post_task_script_path()
             Deadline.Scripting.RepositoryUtils.SaveJob(self.deadlineJob)
             PyQt5.QtWidgets.QMessageBox.information(self, "Job Submitted", "Job {} has been sucesffully submitted to Conductor".format(conductorJobId))
 
