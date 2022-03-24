@@ -85,6 +85,9 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
         # Get the package id for the render plugin
         render_package_id = host_package[conductor_render_plugin['plugin']][render_plugin_version]
         package_ids.append(render_package_id)
+        
+        if not packages:
+            raise deadline_plugin_mapper.NoPackagesFoundError("Unable to locate packages for job '{}'".format(deadline_job))        
 
         return package_ids
     

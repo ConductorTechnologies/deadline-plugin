@@ -138,10 +138,16 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
                 
             dependencySidecarPath = self.dependencyBox.text()
             
-            with open(dependencySidecarPath, 'r') as fh:
-                dependencies = json.load(fh)
+            dependencies = []
+            
+            # If a command is being executed that doesn't require any files, the submission shouldn't
+            # fail
+            if dependencySidecarPath:
+                with open(dependencySidecarPath, 'r') as fh:
+                    dependencies = json.load(fh).get('dependencies')
+
     
-            conductorJob.upload_paths.extend(dependencies['dependencies'])
+            conductorJob.upload_paths.extend(dependencies)
             
             groupName = "conductorautogroup_{}".format(self.deadlineJob.JobId)
             groups = list(Deadline.Scripting.RepositoryUtils.GetGroupNames())

@@ -56,6 +56,9 @@ class ArnoldMapper(deadline_plugin_mapper.DeadlinePluginMapper):
                 LOG.debug("Found package: {}".format(package))
                 package_ids.append(package.get("package_id"))
                 break
+            
+        if not packages:
+            raise deadline_plugin_mapper.NoPackagesFoundError("Unable to locate packages for job '{}'".format(deadline_job))             
 
         return package_ids
     

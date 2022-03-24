@@ -67,9 +67,6 @@ class DeadlineToConductorPackageMapper(object):
         '''
         
         packages = cls.get_mapping_class(deadline_job).map(deadline_job)
-        
-        if not packages:
-            raise Exception("Unable to locate packages for job '{}'".format(deadline_job))
 
         return packages
 

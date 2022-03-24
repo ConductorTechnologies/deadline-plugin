@@ -1,3 +1,6 @@
+class NoPackagesFoundError(Exception):
+    pass
+
 class DeadlinePluginMapper(object):
     '''
     Base class for mapping a specific Deadline Job PLugin to a set of Conductor
