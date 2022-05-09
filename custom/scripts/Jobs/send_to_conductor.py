@@ -1,8 +1,11 @@
+#!/usr/bin/env python3
+
 import os
 import operator
 import json
 import PyQt5.QtWidgets
 import logging
+import sys
 import traceback
 
 logging.basicConfig()
@@ -10,8 +13,9 @@ logging.basicConfig()
 import Deadline.Scripting
 from DeadlineUI.Controls.Scripting.DeadlineScriptDialog import DeadlineScriptDialog
 
-import conductor
-from conductor.__beta__ import job as conductorjob
+import ciocore
+from ciocore.common import reload
+import conductor_job as conductorjob
 import conductor_deadline.package_mapper
 
 
@@ -41,15 +45,14 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         self.selectedInstanceType = None
         self.jobTitle = ""
         self.instanceTypes = []
-
+        
         self._buildUI()
         
     def _buildUI(self):
+
+        self.instanceTypes = self.getInstances()
         
-        instanceTypes = conductor.lib.api_client.request_instance_types()
-        self.instanceTypes = sorted(instanceTypes, key=operator.itemgetter("cores", "memory"), reverse=False)
-        
-        projects = conductor.CONFIG.get("projects") or conductor.lib.api_client.request_projects()
+        projects = ciocore.api_client.request_projects()
         
         self.resize(700, 225)
         
@@ -117,8 +120,8 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         if selectedSidecarFile:
             self.dependencyBox.setText(selectedSidecarFile)
                 
-    def onOKButtonClicked(self): 
-        
+    def onOKButtonClicked(self):
+
         try:
     
             conductorJob = conductorjob.DeadlineWorkerJob()
@@ -132,8 +135,13 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
             conductorJob.deadline_proxy_root = os.environ.get('CONDUCTOR_DEADLINE_PROXY')
             conductorJob.set_deadline_ssl_certificate(os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE', ""))
             conductorJob.deadline_use_ssl = self.to_bool(os.environ.get('CONDUCTOR_DEADLINE_USE_SSL', ""))
+            conductorJob.deadline_use_ssl = self.to_bool(os.environ.get('CONDUCTOR_DEADLINE_USE_SSL', ""))
+            deadline_version = os.environ.get('CONDUCTOR_DEADLINE_WORKER_VERSION')
+
+            if deadline_version:
+                conductorJob.deadline_worker_version = deadline_version
             
-            conductorJob.software_packages_ids = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.map(self.deadlineJob)
+            conductorJob.software_packages = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.map(self.deadlineJob)
             conductorJob.output_path = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.get_output_path(self.deadlineJob)                  
                 
             dependencySidecarPath = self.dependencyBox.text()
@@ -167,7 +175,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
             Deadline.Scripting.RepositoryUtils.SaveJob(self.deadlineJob)
             PyQt5.QtWidgets.QMessageBox.information(self, "Job Submitted", "Job {} has been sucesffully submitted to Conductor".format(conductorJobId))
 
-        except Exception, errMsg:
+        except Exception as errMsg:
             error_dialog = ConductorErrorDialog(errMsg)
             error_dialog.exec_()            
             super( ConductorSubmitDialog, self ).reject()
@@ -185,6 +193,15 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         for instanceType in self.instanceTypes:
             if instanceValue == instanceType['description']:
                 self.selectedInstanceType = instanceType['name']
+                
+    def getInstances(self):
+        from ciocore import data as coredata
+        coredata.init(product="all")
+        tree_data = coredata.data()["instance_types"]
+        instances = [i for i in tree_data if i['operating_system'] == 'linux']
+        instances = sorted(instances, key=operator.itemgetter("cores", "memory"), reverse=False)
+        
+        return instances
                 
     def getDependencySidecarFileFromPath(self):
         scenePath = self.deadlineJob.GetJobPluginInfoKeyValue('SceneFile')            
@@ -207,7 +224,7 @@ def __main__( *args ):
             dialog = ConductorSubmitDialog(deadlineJob=deadlineJob)
             result = dialog.ShowDialog( True )
             
-    except Exception, errMsg:
+    except Exception as errMsg:
         error_dialog = conductorplugin.ConductorErrorDialog(errMsg)
         error_dialog.exec_()
         

@@ -1,9 +1,9 @@
-import conductor_deadline.package_mapper
+from .. import package_mapper
 
-import MayaCmd
-import Arnold
-import Generic
+from . import MayaCmd
+from . import Arnold
+from . import Generic
     
-conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.register(MayaCmd.MayaCmdMapper)
-conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.register(Arnold.ArnoldMapper)
-conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.register(Generic.GenericCmdMapper)
+package_mapper.DeadlineToConductorPackageMapper.register(MayaCmd.MayaCmdMapper)
+package_mapper.DeadlineToConductorPackageMapper.register(Arnold.ArnoldMapper)
+package_mapper.DeadlineToConductorPackageMapper.register(Generic.GenericCmdMapper)

@@ -1,13 +1,11 @@
 import logging
 
-import conductor.lib.api_client
-
-import deadline_plugin_mapper
+from . import deadline_plugin_mapper
 
 LOG = logging.getLogger(__name__)
 
 
-class GenericCmdMapper(object):
+class GenericCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
     '''
     A class for mapping Conductor package ID's to Deadline's generic job types.
     

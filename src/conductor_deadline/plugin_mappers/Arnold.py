@@ -1,8 +1,6 @@
 import logging
 
-import conductor.lib.api_client
-
-import deadline_plugin_mapper
+from . import deadline_plugin_mapper
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(10)

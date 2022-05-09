@@ -1,10 +1,12 @@
 import logging
+import sys
 
-import conductor
+import ciocore.data
 
-import deadline_plugin_mapper
+from . import  deadline_plugin_mapper
 
 LOG = logging.getLogger(__name__)
+LOG.setLevel(10)
 
 
 class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
@@ -23,8 +25,9 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
     PRODUCT_NAME = "maya-io"
     
     product_version_map = {"2018": "Autodesk Maya 2018.6",
-                           "2019": "Autodesk Maya 2019.2"} # There's an error with the arnold package for 2019 that needs to be resolved
-    render_version_map = {'arnold': {'plugin': 'arnold-maya', 'version': '3.2.1.1'},
+                           "2019": "Autodesk Maya 2019.2",
+                           "2022": "Autodesk Maya 2022.3"} # There's an error with the arnold package for 2019 that needs to be resolved
+    render_version_map = {'arnold': {'plugin': 'arnold-maya', 'version': 'latest'}},
                           'vray': {'plugin': 'v-ray-maya', 'version': 'latest'},
                           'renderman': {'plugin': 'renderman-maya', 'version': 'latest'}}
     
@@ -38,15 +41,17 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
         
         :returns: A list of package ID's
         :rtype: list of str
-        '''           
-        
-        package_ids = []
+        '''
+        ciocore.data.init(product="all")
+        software_tree_data = ciocore.data.data()["software"]
+        packages = []
         
         # Get details from the Deadline Job plugin
         render_name = deadline_job.GetJobPluginInfoKeyValue("Renderer").lower()
         major_version = deadline_job.GetJobPluginInfoKeyValue("Version").lower()
-        product_version = cls.product_version_map[major_version]
         
+        product_version = cls.product_version_map[major_version]
+
         LOG.debug("Mapping Deadline render '{}' '{}'".format(render_name, major_version))
         
         # The render plugin must be explicit
@@ -55,41 +60,57 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
         
         if render_name not in cls.render_version_map:
             raise Exception("The render '{}' is not currently support by the Conductor Deadline integration.".format(render_name))
-     
+
         # Get the package id for Maya
-        host_package = conductor.lib.package_utils.get_host_package(cls.PRODUCT_NAME, product_version, strict=False)
-        LOG.debug("Found package: {}".format(host_package))
-        package_ids.append(host_package.get("package"))
+        host_package = software_tree_data.find_by_keys(platform="linux",
+                                                       product=cls.PRODUCT_NAME,
+                                                       major_version=major_version)
         
-        for k,v in host_package.iteritems():
-            print k, v
-        
+
+        LOG.debug("Found host package: {}".format(host_package))
+        packages.append(host_package)
+        LOG.debug("Plugins:", software_tree_data.supported_plugins(host_package))        
         
         # Map the info from the Deadline Job plugin to a Conductor friendly name
         conductor_render_plugin = cls.render_version_map[render_name]
+
+        LOG.debug("Searching for '{}' in {}".format(conductor_render_plugin['plugin'], host_package['children']))
+        
+        render_plugins = {}        
+        for plugin in host_package['children']:
+                        
+            print (plugin['product'] )
+
+            if plugin['product'] == conductor_render_plugin['plugin']:
+                
+                plugin_version = "{major_version}.{minor_version}.{release_version}.{build_version}".format(**plugin)
+                render_plugins[plugin_version] = plugin        
+                   
+        render_plugin_versions = list(render_plugins.keys())
+        LOG.debug("Render plugins (presort): {}".format(render_plugin_versions))        
+        #render_plugin_versions.sort()                
+        LOG.debug("Render plugins (post-sort): {}".format(render_plugin_versions))
         
         # Always use the latest version of the render plugin
         if conductor_render_plugin['version'] == 'latest':
-            render_plugin_versions = host_package[conductor_render_plugin['plugin']].keys()
-            render_plugin_versions.sort()
-            render_plugin_version = render_plugin_versions[-1]
+            print (render_plugin_versions)
+            print (render_plugins)
+            render_plugin = render_plugins[render_plugin_versions[-1]]
             
         else:
-            if conductor_render_plugin['version'] not in host_package[conductor_render_plugin['plugin']].keys():
+            if conductor_render_plugin['version'] not in render_plugin_versions:
                 raise Exception("Unable to find {plugin} version '{verision}' in Conductor packages".format(conductor_render_plugin))
             
-            render_plugin_version = conductor_render_plugin['version']
+            render_plugin = render_plugins[conductor_render_plugin['version']]
             
-        LOG.debug("Using render: {} {} {}".format(conductor_render_plugin, render_plugin_version, host_package[conductor_render_plugin['plugin']][render_plugin_version]))
-        
-        # Get the package id for the render plugin
-        render_package_id = host_package[conductor_render_plugin['plugin']][render_plugin_version]
-        package_ids.append(render_package_id)
+        LOG.debug("Using render: {} {}".format(conductor_render_plugin, render_plugin))
+
+        packages.append(render_plugin)
         
         if not packages:
             raise deadline_plugin_mapper.NoPackagesFoundError("Unable to locate packages for job '{}'".format(deadline_job))        
 
-        return package_ids
+        return packages
     
     @classmethod
     def get_output_path(cls, deadline_job):
@@ -97,5 +118,5 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
         Get the output path for the given deadline job
         '''
            
-        return deadline_job.GetJobInfoKeyValue("OutputDirectory0").replace("\\", "/") 
+        return deadline_job.GetJobInfoKeyValue("OutputDirectory0").replace("\\", "/")
         
