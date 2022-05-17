@@ -42,7 +42,7 @@ class DeadlineToConductorPackageMapper(object):
         '''
         
         if cls.PLUGIN_TO_PACKAGE_MAPPING is None:
-        from . import plugin_mappers
+            from . import plugin_mappers
         plugin_name = deadline_job.GetJobInfoKeyValue("Plugin")
         map_class = cls.PLUGIN_TO_PACKAGE_MAPPING.get(plugin_name, None)
 

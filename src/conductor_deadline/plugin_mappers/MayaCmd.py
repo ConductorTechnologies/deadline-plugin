@@ -27,7 +27,7 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
     product_version_map = {"2018": "Autodesk Maya 2018.6",
                            "2019": "Autodesk Maya 2019.2",
                            "2022": "Autodesk Maya 2022.3"} # There's an error with the arnold package for 2019 that needs to be resolved
-    render_version_map = {'arnold': {'plugin': 'arnold-maya', 'version': 'latest'}},
+    render_version_map = {'arnold': {'plugin': 'arnold-maya', 'version': 'latest'},
                           'vray': {'plugin': 'v-ray-maya', 'version': 'latest'},
                           'renderman': {'plugin': 'renderman-maya', 'version': 'latest'}}
     
