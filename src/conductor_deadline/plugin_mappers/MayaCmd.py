@@ -21,7 +21,7 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
     plugins (Yeti, Goalem, etc...)
     '''
     
-    DEADLINE_PLUGINS = ["MayaCmd"]
+    DEADLINE_PLUGINS = ["MayaCmd", "MayaBatch"]
     PRODUCT_NAME = "maya-io"
     
     product_version_map = {"2018": "Autodesk Maya 2018.6",
