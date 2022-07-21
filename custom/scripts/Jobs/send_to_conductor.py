@@ -14,7 +14,6 @@ import Deadline.Scripting
 from DeadlineUI.Controls.Scripting.DeadlineScriptDialog import DeadlineScriptDialog
 
 import ciocore
-from ciocore.common import reload
 import conductor_job as conductorjob
 import conductor_deadline.package_mapper
 
