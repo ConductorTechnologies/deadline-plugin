@@ -4,7 +4,6 @@ import ciocore
 import ciocore.data
 
 from . import job
-from pip._vendor.distro import minor_version
 
 LOG = logging.getLogger(__name__)
 
