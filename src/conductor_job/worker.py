@@ -56,7 +56,11 @@ class DeadlineWorkerJob(WorkerJob):
         return task_data
     
     def set_deadline_ssl_certificate(self, path):
-        self.deadline_ssl_certificate =  ciocore.file_utils.conform_platform_filepath(ciocore.file_utils.strip_drive_letter(path))
+        LOG.debug("Path arg from set_deadline_ssl_certificate: '{}'".format(path))
+        stripped_drive_letter_path = ciocore.file_utils.strip_drive_letter(path)
+        LOG.debug("Result from stripping drive letter: '{}'".format(stripped_drive_letter_path ))
+        self.deadline_ssl_certificate =  ciocore.file_utils.conform_platform_filepath(stripped_drive_letter_path)
+        LOG.debug("Result from conforming drive letter: '{}'".format(self.deadline_ssl_certificate ))
         self.upload_paths.append(path)
     
     def _get_environment(self):
@@ -70,7 +74,9 @@ class DeadlineWorkerJob(WorkerJob):
         self.environment['CONDUCTOR_DEADLINE_SHOW_WATCHER_DEBUG'] = "1"
         
         if self.deadline_use_ssl:
+            LOG.debug("Setting DCONFIG_ProxySSLCertificate to '{}'".format(self.deadline_ssl_certificate))
             self.environment['DCONFIG_ProxySSLCertificate'] = self.deadline_ssl_certificate
+            LOG.debug("Set DCONFIG_ProxySSLCertificate to '{}'".format(self.environment['DCONFIG_ProxySSLCertificate']))
         
         return super(WorkerJob, self)._get_environment()
     

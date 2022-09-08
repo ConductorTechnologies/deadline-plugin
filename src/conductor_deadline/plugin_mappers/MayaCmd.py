@@ -2,6 +2,7 @@ import logging
 import sys
 
 import ciocore.data
+print(ciocore)
 
 from . import  deadline_plugin_mapper
 
@@ -68,7 +69,7 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
                                                        major_version=major_version)
         
 
-        LOG.debug("Found host package: {}".format(host_package))
+        LOG.debug("Found host package: {}".format(str(host_package)))
         packages.append(host_package)
         LOG.debug("Plugins:", software_tree_data.supported_plugins(host_package))        
         

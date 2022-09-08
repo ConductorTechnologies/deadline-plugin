@@ -133,7 +133,8 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
             
             conductorJob.deadline_proxy_root = os.environ.get('CONDUCTOR_DEADLINE_PROXY')
             conductorJob.set_deadline_ssl_certificate(os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE', ""))
-            conductorJob.deadline_use_ssl = self.to_bool(os.environ.get('CONDUCTOR_DEADLINE_USE_SSL', ""))
+            print ("Set SSL Cert path to '{}' from CONDUCTOR_DEADLINE_SSL_CERTIFICATE ('{}')".format(self.deadline_ssl_certificate, 
+                                                                                                     os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE')))
             conductorJob.deadline_use_ssl = self.to_bool(os.environ.get('CONDUCTOR_DEADLINE_USE_SSL', ""))
             deadline_version = os.environ.get('CONDUCTOR_DEADLINE_WORKER_VERSION')
 

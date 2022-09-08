@@ -61,12 +61,20 @@ class Job(object):
     
     def _get_environment(self):
 
-        env = ciocore.package_environment.PackageEnvironment()        
+        env = ciocore.package_environment.PackageEnvironment()
+        LOG.debug("Initial package environment: {}".format(env._env))    
         for package in self.software_packages:
+            LOG.debug("Adding package '{}' to env".format(package['product']))
+            LOG.debug("Environment: {}".format(package['environment']))
             env.extend(package) 
+            LOG.debug("Resulting env: {}".format(env._env))
         
         env = dict(env)
+        LOG.debug("Final package env: {}".format(env))
+        LOG.debug("Job environment: {}".format(self.environment))
         env.update(self.environment)
+        
+        LOG.debug("Final job env: {}".format(env))
         
         return env
     
