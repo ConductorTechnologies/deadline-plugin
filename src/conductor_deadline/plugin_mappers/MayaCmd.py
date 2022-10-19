@@ -71,7 +71,7 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
 
         LOG.debug("Found host package: {}".format(str(host_package)))
         packages.append(host_package)
-        LOG.debug("Plugins:", software_tree_data.supported_plugins(host_package))        
+        LOG.debug("Plugins:", software_tree_data.supported_plugins(str(host_package)))        
         
         # Map the info from the Deadline Job plugin to a Conductor friendly name
         conductor_render_plugin = cls.render_version_map[render_name]
