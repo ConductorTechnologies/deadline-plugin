@@ -1,5 +1,7 @@
 import logging
 
+import ciocore
+
 from . import deadline_plugin_mapper
 
 LOG = logging.getLogger(__name__)
@@ -33,32 +35,17 @@ class ArnoldMapper(deadline_plugin_mapper.DeadlinePluginMapper):
         :returns: A list of package ID's
         :rtype: list of str
         '''           
-        
-        package_ids = []
 
         # Get the package id for Maya
-        software_packages = conductor.lib.api_client.request_software_packages()
-
-        for package in software_packages:
-            
-            package_version = ".".join( (package['major_version'], 
-                                        package['minor_version'], 
-                                        package['release_version'], 
-                                        package['build_version']))
-            
-            LOG.debug("Checking packages {} {} for match".format(package['package'], package_version))
-            
-            if ( package['product'] == cls.PRODUCT_NAME and
-                 package_version == cls.MTOA_PRODUCT_VERSION ):
+        ciocore.data.init(product="all")
+        software_tree_data = ciocore.data.data()["software"]
         
-                LOG.debug("Found package: {}".format(package))
-                package_ids.append(package.get("package_id"))
-                break
+        package = software_tree_data.find_by_name("{} {} linux".format(cls.PRODUCT_NAME, cls.MTOA_PRODUCT_VERSION))
             
-        if not packages:
+        if not package:
             raise deadline_plugin_mapper.NoPackagesFoundError("Unable to locate packages for job '{}'".format(deadline_job))             
 
-        return package_ids
+        return [package]
     
     @classmethod
     def get_output_path(cls, deadline_job):

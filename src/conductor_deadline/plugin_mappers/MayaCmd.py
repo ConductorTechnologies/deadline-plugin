@@ -24,10 +24,10 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
     DEADLINE_PLUGINS = ["MayaCmd", "MayaBatch"]
     PRODUCT_NAME = "maya-io"
     
-    product_version_map = {"2018": "Autodesk Maya 2018.6",
-                           "2019": "Autodesk Maya 2019.2",
-                           "2020": "Autodesk Maya 2020.4",
-                           "2022": "Autodesk Maya 2022.3"} # There's an error with the arnold package for 2019 that needs to be resolved
+    product_version_map = {"2018": "maya-io 2018.SP6 linux",
+                           "2019": "maya-io 2019.SP2 linux",
+                           "2020": "maya-io 2020.SP4 linux",
+                           "2022": "maya-io 2022.SP3 linux"} # There's an error with the arnold package for 2019 that needs to be resolved
     render_version_map = {'arnold': {'plugin': 'arnold-maya', 'version': 'latest'},
                           'vray': {'plugin': 'v-ray-maya', 'version': 'latest'},
                           'renderman': {'plugin': 'renderman-maya', 'version': 'latest'}}
@@ -53,7 +53,7 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
         
         product_version = cls.product_version_map[major_version]
 
-        LOG.debug("Mapping Deadline render '{}' '{}'".format(render_name, major_version))
+        LOG.debug("Mapping Deadline renderer '{}' '{}'".format(render_name, major_version))
         
         # The render plugin must be explicit
         if render_name == "File":
@@ -63,14 +63,12 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
             raise Exception("The render '{}' is not currently support by the Conductor Deadline integration.".format(render_name))
 
         # Get the package id for Maya
-        host_package = software_tree_data.find_by_keys(platform="linux",
-                                                       product=cls.PRODUCT_NAME,
-                                                       major_version=major_version)
+        host_package = software_tree_data.find_by_name(product_version)
         
 
         LOG.debug("Found host package: {}".format(host_package))
         packages.append(host_package)
-        LOG.debug("Plugins:", software_tree_data.supported_plugins(host_package))        
+        LOG.debug("Plugins: {}".format(software_tree_data.supported_plugins(product_version)))        
         
         # Map the info from the Deadline Job plugin to a Conductor friendly name
         conductor_render_plugin = cls.render_version_map[render_name]
@@ -89,7 +87,7 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
                    
         render_plugin_versions = list(render_plugins.keys())
         LOG.debug("Render plugins (presort): {}".format(render_plugin_versions))        
-        #render_plugin_versions.sort()                
+        render_plugin_versions.sort()                
         LOG.debug("Render plugins (post-sort): {}".format(render_plugin_versions))
         
         # Always use the latest version of the render plugin

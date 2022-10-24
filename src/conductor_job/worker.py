@@ -86,23 +86,14 @@ class DeadlineWorkerJob(WorkerJob):
     
     def submit_job(self):
         
-        ciocore.data.init("deadline")          
+        ciocore.data.init(product="deadline")          
         software_tree = ciocore.data.data()["software"]
+
+
+        deadline_package = software_tree.find_by_name("deadline {} linux".format(self.deadline_worker_version))
         
-        major_version, minor_version, release_version, build_version = self.deadline_worker_version.split(".")
-        
-        try:
-            deadline_package = software_tree.find_by_keys( product='deadline',
-#                                                            major_version=major_version,
-#                                                            minor_version=minor_version,
-#                                                            release_version = release_version,
-#                                                            build_version = build_version
-                                                           )
-                                                           
-        except (TypeError, KeyError) as errMsg:
-            LOG.error(str(errMsg))
-            #available_deadline_packages = [ p['package'] for p in software_tree.find_by_keys( product='deadline') ]
-            available_deadline_packages = software_tree.find_by_keys( product='deadline')
+        if deadline_package is None:                                               
+            available_deadline_packages = ", ".join([package.split(" ")[1] for package in software_tree.to_path_list() if package.split(" ")[0] == "deadline" ])
             raise DeadlineWorkerJobError('Unable to find a package in Conductor for Deadline v{}.\nAvailable packages are {}:'.format(self.deadline_worker_version, 
                                                                                                                                       available_deadline_packages))
         
