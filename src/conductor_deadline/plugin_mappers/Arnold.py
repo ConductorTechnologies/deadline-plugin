@@ -10,7 +10,7 @@ LOG.setLevel(10)
 
 class ArnoldMapper(deadline_plugin_mapper.DeadlinePluginMapper):
     '''
-    A class for mapping Conductor package ID's to the Arnold Deadline Plugin.
+    A class for mapping Conductor packages to the Arnold Deadline Plugin.
     
     It queries the Deadline Job plugin for details and is therefore limited
     by what that plugin exposes.
@@ -23,20 +23,19 @@ class ArnoldMapper(deadline_plugin_mapper.DeadlinePluginMapper):
     DEADLINE_PLUGINS = ["Arnold"]
     PRODUCT_NAME = "arnold-maya"
     MTOA_PRODUCT_VERSION = "4.0.3.0"
- 
+    
     @classmethod
-    def map(cls, deadline_job):        
+    def get_host_package(cls, deadline_job):
         '''
-        Get the corresponding Conductor package ID's for the given Deadline job
+        Get the corresponding Conductor package for the primary (aka host) package.
         
         :param deaadline_job: The Deadline job to map
         :type deadline_job: :py:class:`~Deadline.Jobs.Job`
         
-        :returns: A list of package ID's
-        :rtype: list of str
-        '''           
-
-        # Get the package id for Maya
+        :returns: A package
+        :rtype: dict
+        '''
+        
         ciocore.data.init(product="all")
         software_tree_data = ciocore.data.data()["software"]
         
@@ -45,7 +44,29 @@ class ArnoldMapper(deadline_plugin_mapper.DeadlinePluginMapper):
         if not package:
             raise deadline_plugin_mapper.NoPackagesFoundError("Unable to locate packages for job '{}'".format(deadline_job))             
 
-        return [package]
+        return package      
+  
+    @classmethod
+    def map(cls, deadline_job):        
+        '''
+        Get the corresponding Conductor packages for the given Deadline job
+        
+        :param deaadline_job: The Deadline job to map
+        :type deadline_job: :py:class:`~Deadline.Jobs.Job`
+        
+        :returns: A list of package's
+        :rtype: list of dict
+        '''           
+
+        ciocore.data.init(product="all")
+        software_tree_data = ciocore.data.data()["software"]
+        
+        package = software_tree_data.find_by_name("{} {} linux".format(cls.PRODUCT_NAME, cls.MTOA_PRODUCT_VERSION))
+            
+        if not package:
+            raise deadline_plugin_mapper.NoPackagesFoundError("Unable to locate packages for job '{}'".format(deadline_job))             
+
+        return [cls.get_host_package(deadline_job)]
     
     @classmethod
     def get_output_path(cls, deadline_job):

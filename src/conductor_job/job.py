@@ -71,7 +71,9 @@ class Job(object):
         return env
     
     def _get_package_ids(self):
-        LOG.debug("Getting package ids from packages: {}".format(self.software_packages))
+        LOG.debug("Getting package ids ({}) from packages: {}".format(len(self.software_packages),
+                                                                      self.software_packages))
+        
         packages_ids = [ package['package_id'] for package in self.software_packages]
         LOG.debug("Got package ids: {}".format(packages_ids))
         return packages_ids

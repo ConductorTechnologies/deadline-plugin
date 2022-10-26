@@ -7,7 +7,7 @@ LOG = logging.getLogger(__name__)
 
 class GenericCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
     '''
-    A class for mapping Conductor package ID's to Deadline's generic job types.
+    A class for mapping Conductor packages to Deadline's generic job types.
     
     Since these jobs require no packages from Conductor, it returns an empty list.
     '''
@@ -15,8 +15,7 @@ class GenericCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
     DEADLINE_PLUGINS = ["CommandLine", "CommandScript", "Python"]
     
     @classmethod
-    def map(cls, deadline_job):
-        
+    def map(cls, deadline_job):        
         return []
     
     @classmethod

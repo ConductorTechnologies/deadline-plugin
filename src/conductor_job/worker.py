@@ -45,6 +45,7 @@ class DeadlineWorkerJob(WorkerJob):
         self.deadline_use_ssl = True
         self.deadline_worker_version = self.DEFAULT_WORKER_VERSION
         self.deadline_group_name = None
+        self.deadline_worker_package = None
         
     def _get_task_data(self):
         task_data = []
@@ -86,18 +87,20 @@ class DeadlineWorkerJob(WorkerJob):
     
     def submit_job(self):
         
-        ciocore.data.init(product="deadline")          
-        software_tree = ciocore.data.data()["software"]
-
-
-        deadline_package = software_tree.find_by_name("deadline {} linux".format(self.deadline_worker_version))
+        if self.deadline_worker_package is None:
         
-        if deadline_package is None:                                               
-            available_deadline_packages = ", ".join([package.split(" ")[1] for package in software_tree.to_path_list() if package.split(" ")[0] == "deadline" ])
-            raise DeadlineWorkerJobError('Unable to find a package in Conductor for Deadline v{}.\nAvailable packages are {}:'.format(self.deadline_worker_version, 
-                                                                                                                                      available_deadline_packages))
+            ciocore.data.init(product="deadline")          
+            software_tree = ciocore.data.data()["software"]
+    
+    
+            self.deadline_worker_package = software_tree.find_by_name("deadline {} linux".format(self.deadline_worker_version))
+            
+            if self.deadline_worker_package is None:                                               
+                available_deadline_packages = ", ".join([package.split(" ")[1] for package in software_tree.to_path_list() if package.split(" ")[0] == "deadline" ])
+                raise DeadlineWorkerJobError('Unable to find a package in Conductor for Deadline v{}.\nAvailable packages are {}:'.format(self.deadline_worker_version, 
+                                                                                                                                          available_deadline_packages))
         
-        self.software_packages.append(deadline_package)
+        self.software_packages.append(self.deadline_worker_package)
         
         return super(DeadlineWorkerJob, self).submit_job()
     

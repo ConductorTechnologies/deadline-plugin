@@ -11,7 +11,7 @@ LOG.setLevel(10)
 
 class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
     '''
-    A class for mapping Conductor package ID's to the MayaCmd Deadline Plugin.
+    A class for mapping Conductor packages to the MayaCmd Deadline Plugin.
     
     It queries the Deadline Job plugin for details and is therefore limited
     by what that plugin exposes.
@@ -33,27 +33,43 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
                           'renderman': {'plugin': 'renderman-maya', 'version': 'latest'}}
     
     @classmethod
-    def map(cls, deadline_job):        
+    def get_host_package(cls, deadline_job):
         '''
-        Get the corresponding Conductor package ID's for the given Deadline job
+        Get the corresponding Conductor package for the primary (aka host) package.
         
         :param deaadline_job: The Deadline job to map
         :type deadline_job: :py:class:`~Deadline.Jobs.Job`
         
-        :returns: A list of package ID's
-        :rtype: list of str
+        :returns: A package
+        :rtype: dict
         '''
+        
         ciocore.data.init(product="all")
         software_tree_data = ciocore.data.data()["software"]
-        packages = []
         
         # Get details from the Deadline Job plugin
-        render_name = deadline_job.GetJobPluginInfoKeyValue("Renderer").lower()
         major_version = deadline_job.GetJobPluginInfoKeyValue("Version").lower()
         
         product_version = cls.product_version_map[major_version]
 
-        LOG.debug("Mapping Deadline renderer '{}' '{}'".format(render_name, major_version))
+        # Get the package id for Maya
+        host_package = software_tree_data.find_by_name(product_version)
+        
+        return host_package
+    
+    @classmethod
+    def get_plugins(cls, deadline_job, host_package):
+        '''
+        Get the corresponding Conductor packages for plugins
+        
+        :param deaadline_job: The Deadline job to map
+        :type deadline_job: :py:class:`~Deadline.Jobs.Job`
+        
+        :returns: A list of packages
+        :rtype: list of dict
+        '''        
+        
+        render_name = deadline_job.GetJobPluginInfoKeyValue("Renderer").lower()
         
         # The render plugin must be explicit
         if render_name == "File":
@@ -61,24 +77,15 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
         
         if render_name not in cls.render_version_map:
             raise Exception("The render '{}' is not currently support by the Conductor Deadline integration.".format(render_name))
-
-        # Get the package id for Maya
-        host_package = software_tree_data.find_by_name(product_version)
         
-
-        LOG.debug("Found host package: {}".format(host_package))
-        packages.append(host_package)
-        LOG.debug("Plugins: {}".format(software_tree_data.supported_plugins(product_version)))        
         
         # Map the info from the Deadline Job plugin to a Conductor friendly name
         conductor_render_plugin = cls.render_version_map[render_name]
 
-        LOG.debug("Searching for '{}' in {}".format(conductor_render_plugin['plugin'], host_package['children']))
+        #LOG.debug("Searching for '{}' in {}".format(conductor_render_plugin['plugin'], host_package['children']))
         
         render_plugins = {}        
         for plugin in host_package['children']:
-                        
-            print (plugin['product'] )
 
             if plugin['product'] == conductor_render_plugin['plugin']:
                 
@@ -92,8 +99,6 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
         
         # Always use the latest version of the render plugin
         if conductor_render_plugin['version'] == 'latest':
-            print (render_plugin_versions)
-            print (render_plugins)
             render_plugin = render_plugins[render_plugin_versions[-1]]
             
         else:
@@ -102,9 +107,38 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
             
             render_plugin = render_plugins[conductor_render_plugin['version']]
             
-        LOG.debug("Using render: {} {}".format(conductor_render_plugin, render_plugin))
+        LOG.debug("Using render: {} {}".format(conductor_render_plugin, render_plugin['package']))
+        
+        return [render_plugin]
+    
+    @classmethod
+    def map(cls, deadline_job):        
+        '''
+        Get the corresponding Conductor packages for the given Deadline job
+        
+        :param deaadline_job: The Deadline job to map
+        :type deadline_job: :py:class:`~Deadline.Jobs.Job`
+        
+        :returns: A list of packages
+        :rtype: list of dict
+        '''
+        
+        ciocore.data.init(product="all")
+        software_tree_data = ciocore.data.data()["software"]
+        packages = []
+        
+        # Get details from the Deadline Job plugin
+        major_version = deadline_job.GetJobPluginInfoKeyValue("Version").lower()        
+        product_version = cls.product_version_map[major_version]
 
-        packages.append(render_plugin)
+        # Get the package id for Maya
+        host_package = cls.get_host_package(deadline_job)
+        
+        LOG.debug("Found host package: {}".format(host_package))
+        packages.append(host_package)
+        LOG.debug("Plugins: {}".format(software_tree_data.supported_plugins(product_version)))        
+        
+        packages.extend(cls.get_plugins(deadline_job, host_package))
         
         if not packages:
             raise deadline_plugin_mapper.NoPackagesFoundError("Unable to locate packages for job '{}'".format(deadline_job))        
