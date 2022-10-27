@@ -194,12 +194,8 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
             self.conductorJob.deadline_proxy_root = os.environ.get('CONDUCTOR_DEADLINE_PROXY')
             self.conductorJob.set_deadline_ssl_certificate(os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE', ""))
             self.conductorJob.deadline_use_ssl = self.to_bool(os.environ.get('CONDUCTOR_DEADLINE_USE_SSL', ""))
-            deadline_version = os.environ.get('CONDUCTOR_DEADLINE_WORKER_VERSION')
             self.conductorJob.upload_paths.append(self.deadlineJob.GetJobPluginInfoKeyValue('SceneFile'))
 
-            if deadline_version:
-                self.conductorJob.deadline_worker_version = deadline_version
-            
             #self.conductorJob.software_packages = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.map(self.deadlineJob)
             self.conductorJob.software_packages = self.getSoftwarePackages()
             self.conductorJob.output_path = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.get_output_path(self.deadlineJob)                  
@@ -281,8 +277,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         package_tree = ciocore.package_tree.PackageTree(packages)
         
         # The package for the Deadline Worker is explicit
-        self.conductorJob.deadline_worker_package = selected_packages.append(package_tree.find_by_name(self.GetValue("WorkerBox")))
-        
+        self.conductorJob.deadline_worker_package = package_tree.find_by_name(self.GetValue("WorkerBox"))
         for package_name in package_names:
             package = package_tree.find_by_name(package_name)
             
