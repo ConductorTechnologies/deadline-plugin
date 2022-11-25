@@ -15,6 +15,7 @@ from DeadlineUI.Controls.Scripting.DeadlineScriptDialog import DeadlineScriptDia
 
 import ciocore
 import ciocore.package_tree
+import cioseq.sequence
 
 import conductor_job as conductorjob
 import conductor_deadline.package_mapper
@@ -47,7 +48,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         self.jobTitle = ""
         self.instanceTypes = []
         
-        self.conductorJob = conductorjob.DeadlineWorkerJob()
+        self.conductorJob = None
         
         self._buildUI()
         
@@ -84,14 +85,15 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         
         self.AddGrid()
         self.AddControlToGrid( "Separator3", "SeparatorControl", "Packages", 0, 0, colSpan=2 )
-        self.AddControlToGrid( "WorkerLabel", "LabelControl", "Worker", 1, 0 , "Deadline Worker version to use on Conductor", False )
-        self.deadlinePackageCombo = self.AddControlToGrid( "WorkerBox", "ComboControl", "", 1, 1 )
+        self.nativeJobCheckBox = self.AddSelectionControlToGrid( "IsNative", "CheckBoxControl", False, "Native", 1, 0, "A native job won't launch a Deadline worker. Job will be only appear in the Conductor Dashboard" )
+        self.AddControlToGrid( "WorkerLabel", "LabelControl", "Worker", 2, 0 , "Deadline Worker version to use on Conductor", False )
+        self.deadlinePackageCombo = self.AddControlToGrid( "WorkerBox", "ComboControl", "", 2, 1 )
         
-        self.AddControlToGrid( "DCCLabel", "LabelControl", "DCC", 2, 0 , "DCC package to use on Conductor", False )
-        self.dccPackageCombo = self.AddControlToGrid( "PackageBox", "ComboControl", "", 2, 1 )
+        self.AddControlToGrid( "DCCLabel", "LabelControl", "DCC", 3, 0 , "DCC package to use on Conductor", False )
+        self.dccPackageCombo = self.AddControlToGrid( "PackageBox", "ComboControl", "", 3, 1 )
         
-        self.AddControlToGrid( "PluginLabel", "LabelControl", "Plugins", 3, 0 , "Plugins to enable on Conductor", False )
-        self.pluginPackagesCombo = self.AddControlToGrid( "PluginPackageBox", "MultiSelectListControl", "", 3, 1 )       
+        self.AddControlToGrid( "PluginLabel", "LabelControl", "Plugins", 4, 0 , "Plugins to enable on Conductor", False )
+        self.pluginPackagesCombo = self.AddControlToGrid( "PluginPackageBox", "MultiSelectListControl", "", 4, 1 )       
         
         self.EndGrid()        
         
@@ -184,19 +186,50 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
 
         try:
             
+            if self.nativeJobCheckBox.isChecked():
+                
+                #self.conductorJob = self._createNativeJob()
+                self.conductorJob = conductorjob.MayaRenderJob()
+                self.conductorJob.cmd = "Render"
+                self.conductorJob.render_layer = "defaultRenderLayer"
+                self.conductorJob.scene_path = self.deadlineJob.GetJobPluginInfoKeyValue("SceneFile") 
+                self.conductorJob.project_path = self.deadlineJob.GetJobPluginInfoKeyValue("ProjectPath")
+                self.conductorJob.frames = cioseq.sequence.Sequence.create(self.deadlineJob.GetJobInfoKeyValue("Frames"))
+                self.conductorJob.chunk_size = 1
+#                 self.conductorJob.startFrame = 
+#                 self.conductorJob.endFrame =
+                #deadline_job.GetJobInfoKeyValue("OutputDirectory0"
+                
+            else:
+                
+                #self.conductorJob = self._createDeadlineJob()
+                self.conductorJob = conductorjob.DeadlineWorkerJob()
+                self.conductorJob.deadline_proxy_root = os.environ.get('CONDUCTOR_DEADLINE_PROXY')
+                self.conductorJob.set_deadline_ssl_certificate(os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE', ""))
+                self.conductorJob.deadline_use_ssl = self.to_bool(os.environ.get('CONDUCTOR_DEADLINE_USE_SSL', ""))
+                
+                groupName = "conductorautogroup_{}".format(self.deadlineJob.JobId)
+                groups = list(Deadline.Scripting.RepositoryUtils.GetGroupNames())
+                
+                if groupName in groups:
+                    Deadline.Scripting.RepositoryUtils.DeleteGroup(groupName)
+                
+                Deadline.Scripting.RepositoryUtils.AddGroup(groupName)
+        
+                self.deadlineJob.JobGroup = groupName
+                self.conductorJob.deadline_group_name = groupName
+                
+                self.deadlineJob.JobPostTaskScript = self.conductorJob.get_post_task_script_path()
+                Deadline.Scripting.RepositoryUtils.SaveJob(self.deadlineJob)                
+            
             self.conductorJob.environment['DEADLINE_JOBID'] = self.deadlineJob.JobId
             self.conductorJob.instance_type = self.selectedInstanceType
             self.conductorJob.instance_count = self.deadlineJob.TaskCount
             self.conductorJob.job_title = self.jobNameTextBox.text()            
             self.conductorJob.preemptible = self.preemptibleCheckBox.isChecked()       
             self.conductorJob.project = self.projectBox.currentText() 
-            
-            self.conductorJob.deadline_proxy_root = os.environ.get('CONDUCTOR_DEADLINE_PROXY')
-            self.conductorJob.set_deadline_ssl_certificate(os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE', ""))
-            self.conductorJob.deadline_use_ssl = self.to_bool(os.environ.get('CONDUCTOR_DEADLINE_USE_SSL', ""))
             self.conductorJob.upload_paths.append(self.deadlineJob.GetJobPluginInfoKeyValue('SceneFile'))
 
-            #self.conductorJob.software_packages = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.map(self.deadlineJob)
             self.conductorJob.software_packages = self.getSoftwarePackages()
             self.conductorJob.output_path = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.get_output_path(self.deadlineJob)                  
                 
@@ -212,23 +245,11 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
 
     
             self.conductorJob.upload_paths.extend(dependencies)
-            
-            groupName = "conductorautogroup_{}".format(self.deadlineJob.JobId)
-            groups = list(Deadline.Scripting.RepositoryUtils.GetGroupNames())
-            
-            if groupName in groups:
-                Deadline.Scripting.RepositoryUtils.DeleteGroup(groupName)
-            
-            Deadline.Scripting.RepositoryUtils.AddGroup(groupName)
-    
-            self.deadlineJob.JobGroup = groupName
-            self.conductorJob.deadline_group_name = groupName
 
             conductorJobId = self.conductorJob.submit_job()
             
             # This script is present on the Deadline worker
-            self.deadlineJob.JobPostTaskScript = self.conductorJob.get_post_task_script_path()
-            Deadline.Scripting.RepositoryUtils.SaveJob(self.deadlineJob)
+
             PyQt5.QtWidgets.QMessageBox.information(self, "Job Submitted", "Job {} has been sucesffully submitted to Conductor".format(conductorJobId))
 
         except Exception as errMsg:
