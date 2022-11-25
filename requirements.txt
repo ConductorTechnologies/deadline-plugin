@@ -1,0 +1,2 @@
+ciocore>=5.4, <6
+cioseqls>=0.1.15, <1
