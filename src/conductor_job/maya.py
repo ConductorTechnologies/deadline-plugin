@@ -8,6 +8,11 @@ LOG = logging.getLogger(__name__)
 
 class MayaRenderJob(job.Job):
     
+        PRODUCT_TO_RENDERER_MAPPING = {"arnold-maya":"arnold",
+                                       "renderman-maya": "renderman",
+                                       "redshift-maya": "redshift",
+                                       "vray-maya": "vray"}
+    
         def __init__(self, scene_path=None, project_path=None, *args , **kwargs):
             
             super(MayaRenderJob, self).__init__(*args, **kwargs)
@@ -23,6 +28,7 @@ class MayaRenderJob(job.Job):
             self.frames = None
             self.frame_step = 1
             self.log_level = "2"
+            self.renderer = "File"
  
         def _get_task_data(self):
 
@@ -41,7 +47,7 @@ class MayaRenderJob(job.Job):
                 end_frame = chunk_frames[-1]
                 
                 command_args = {'cmd': self.cmd,
-                                'log_level': self.log_level,
+                                'renderer': self.PRODUCT_TO_RENDERER_MAPPING[self.renderer],
                                 'start_frame': start_frame,
                                 'end_frame': end_frame,
                                 'frame_step': self.frame_step,
@@ -50,10 +56,11 @@ class MayaRenderJob(job.Job):
                                 'project_path': self.project_path,
                                 'scene_path': self.scene_path,
                                 'extra_args': self.additional_cmd_args,
+                                'renderer_args': self.get_renderer_args(self.renderer),
                                 'post_cmd': self.post_task_cmd}
                 
                 task_cmd = { "frames": "{}-{}".format(start_frame, end_frame),
-                             "command": "{cmd} ai:lve {log_level} -s {start_frame} -e {end_frame} -b {frame_step} -rl {render_layer} -rd {output_path} -proj {project_path} {extra_args} {scene_path}".format(**command_args)}
+                             "command": "{cmd} -r {renderer} -s {start_frame} -e {end_frame} -b {frame_step} -rl {render_layer} -rd {output_path} -proj {project_path} {renderer_args} {extra_args} {scene_path}".format(**command_args)}
                 
                 if self.post_job_cmd:
                     task_cmd["command"] += " && {}".format(self.post_task_cmd)
@@ -64,6 +71,16 @@ class MayaRenderJob(job.Job):
                 task_data.append({"frames": "999999", 
                                   "command": self.post_job_cmd})
                 
-                self.scout_frames = ",".join([str(f) for f in frames])
+                self.scout_frames = ",".join([str(f) for f in self.frames])
                 
             return task_data
+        
+        def get_renderer_args(self, renderer):
+            
+            args = ""
+                
+            if renderer == "arnold-maya":
+                args = "-ai:lve {log_level}".format(log_level=self.log_level)
+                
+            return args
+        

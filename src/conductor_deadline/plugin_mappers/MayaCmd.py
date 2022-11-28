@@ -58,15 +58,15 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
         return host_package
     
     @classmethod
-    def get_plugins(cls, deadline_job, host_package):
+    def get_renderer_package(cls, deadline_job, host_package):
         '''
-        Get the corresponding Conductor packages for plugins
+        Get the corresponding Conductor packages for the renderer used in the job
         
         :param deaadline_job: The Deadline job to map
         :type deadline_job: :py:class:`~Deadline.Jobs.Job`
         
-        :returns: A list of packages
-        :rtype: list of dict
+        :returns: The renderer package
+        :rtype: dict
         '''        
         
         render_name = deadline_job.GetJobPluginInfoKeyValue("Renderer").lower()
@@ -109,8 +109,22 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
             
         LOG.debug("Using render: {} {}".format(conductor_render_plugin, render_plugin['package']))
         
-        return [render_plugin]
-    
+        return render_plugin
+
+    @classmethod
+    def get_plugins(cls, deadline_job, host_package):
+        '''
+        Get the corresponding Conductor packages for plugins
+        
+        :param deaadline_job: The Deadline job to map
+        :type deadline_job: :py:class:`~Deadline.Jobs.Job`
+        
+        :returns: A list of packages
+        :rtype: list of dict
+        '''
+        
+        return [cls.get_renderer_package(deadline_job, host_package)]
+        
     @classmethod
     def map(cls, deadline_job):        
         '''

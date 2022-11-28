@@ -188,14 +188,18 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
             
             if self.nativeJobCheckBox.isChecked():
                 
+                deadline_mapper = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.get_mapping_class(self.deadlineJob)
+                
+                host_package = deadline_mapper.get_host_package(self.deadlineJob)
+                renderer_package = deadline_mapper.get_renderer_package(self.deadlineJob, host_package)
                 #self.conductorJob = self._createNativeJob()
                 self.conductorJob = conductorjob.MayaRenderJob()
-                self.conductorJob.cmd = "Render"
-                self.conductorJob.render_layer = "defaultRenderLayer"
+                self.conductorJob.renderer = renderer_package['product']
                 self.conductorJob.scene_path = self.deadlineJob.GetJobPluginInfoKeyValue("SceneFile") 
                 self.conductorJob.project_path = self.deadlineJob.GetJobPluginInfoKeyValue("ProjectPath")
                 self.conductorJob.frames = cioseq.sequence.Sequence.create(self.deadlineJob.GetJobInfoKeyValue("Frames"))
                 self.conductorJob.chunk_size = 1
+
 #                 self.conductorJob.startFrame = 
 #                 self.conductorJob.endFrame =
                 #deadline_job.GetJobInfoKeyValue("OutputDirectory0"
@@ -220,7 +224,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
                 self.conductorJob.deadline_group_name = groupName
                 
                 self.deadlineJob.JobPostTaskScript = self.conductorJob.get_post_task_script_path()
-                Deadline.Scripting.RepositoryUtils.SaveJob(self.deadlineJob)                
+                Deadline.Scripting.RepositoryUtils.SaveJob(self.deadlineJob)             
             
             self.conductorJob.environment['DEADLINE_JOBID'] = self.deadlineJob.JobId
             self.conductorJob.instance_type = self.selectedInstanceType
@@ -228,9 +232,9 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
             self.conductorJob.job_title = self.jobNameTextBox.text()            
             self.conductorJob.preemptible = self.preemptibleCheckBox.isChecked()       
             self.conductorJob.project = self.projectBox.currentText() 
+            self.conductorJob.software_packages = self.getSoftwarePackages()            
             self.conductorJob.upload_paths.append(self.deadlineJob.GetJobPluginInfoKeyValue('SceneFile'))
 
-            self.conductorJob.software_packages = self.getSoftwarePackages()
             self.conductorJob.output_path = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.get_output_path(self.deadlineJob)                  
                 
             dependencySidecarPath = self.dependencyBox.text()
