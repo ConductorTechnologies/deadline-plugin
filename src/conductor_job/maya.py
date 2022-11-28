@@ -1,6 +1,7 @@
 import logging
 
 import cioseq.sequence
+import ciopath.gpath
 
 from . import job
 
@@ -52,9 +53,9 @@ class MayaRenderJob(job.Job):
                                 'end_frame': end_frame,
                                 'frame_step': self.frame_step,
                                 'render_layer': self.render_layer,
-                                'output_path': self.output_path,
-                                'project_path': self.project_path,
-                                'scene_path': self.scene_path,
+                                'output_path': ciopath.gpath.Path(self.output_path).fslash(with_drive=False),
+                                'project_path': ciopath.gpath.Path(self.project_path).fslash(with_drive=False),
+                                'scene_path': ciopath.gpath.Path(self.scene_path).fslash(with_drive=False),
                                 'extra_args': self.additional_cmd_args,
                                 'renderer_args': self.get_renderer_args(self.renderer),
                                 'post_cmd': self.post_task_cmd}
