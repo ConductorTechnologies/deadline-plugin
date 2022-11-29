@@ -198,6 +198,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
                 self.conductorJob.scene_path = self.deadlineJob.GetJobPluginInfoKeyValue("SceneFile") 
                 self.conductorJob.project_path = self.deadlineJob.GetJobPluginInfoKeyValue("ProjectPath")
                 self.conductorJob.frames = cioseq.sequence.Sequence.create(self.deadlineJob.GetJobInfoKeyValue("Frames"))
+                self.conductorJob.render_layer = self.deadlineJob.GetJobPluginInfoKeyValue("RenderLayer") or self.conductorJob.render_layer
                 self.conductorJob.chunk_size = 1
 
 #                 self.conductorJob.startFrame = 
