@@ -164,6 +164,6 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
         '''
         Get the output path for the given deadline job
         '''
-           
-        return deadline_job.GetJobInfoKeyValue("OutputDirectory0").replace("\\", "/")
+        
+        return deadline_job.GetJobPluginInfoKeyValue("OutputFilePath").replace("\\", "/")
         
