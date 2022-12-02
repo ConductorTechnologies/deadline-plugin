@@ -83,7 +83,7 @@ class MayaRenderJob(job.Job):
             if renderer == "arnold-maya":
                 # Use the same prefix as the Maya project path (ex: /projects/my_project)
                 standin_path = "/".join(ciopath.gpath.Path(self.project_path).fslash(with_drive=False).split("/")[0:3])
-                args = "-ai:lve {log_level} -ai:sptx {}".format(log_level=self.log_level, standin_path)
+                args = "-ai:lve {log_level} -ai:sptx {standin_path}".format(log_level=self.log_level, standin_path=standin_path)
                 
             return args
         
