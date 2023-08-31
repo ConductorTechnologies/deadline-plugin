@@ -57,7 +57,7 @@ class DeadlineWorkerJob(WorkerJob):
         return task_data
     
     def set_deadline_ssl_certificate(self, path):
-        self.deadline_ssl_certificate =  ciocore.file_utils.conform_platform_filepath(ciocore.file_utils.strip_drive_letter(path))
+        self.deadline_ssl_certificate =  ciocore.file_utils.strip_drive_letter(path)
         self.upload_paths.append(path)
     
     def _get_environment(self):

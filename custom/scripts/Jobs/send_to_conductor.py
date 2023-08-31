@@ -15,6 +15,7 @@ from DeadlineUI.Controls.Scripting.DeadlineScriptDialog import DeadlineScriptDia
 
 import ciocore
 import ciocore.package_tree
+import cioseq.sequence
 
 import conductor_job as conductorjob
 import conductor_deadline.package_mapper
@@ -47,7 +48,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         self.jobTitle = ""
         self.instanceTypes = []
         
-        self.conductorJob = conductorjob.DeadlineWorkerJob()
+        self.conductorJob = None
         
         self._buildUI()
         
@@ -84,14 +85,16 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         
         self.AddGrid()
         self.AddControlToGrid( "Separator3", "SeparatorControl", "Packages", 0, 0, colSpan=2 )
-        self.AddControlToGrid( "WorkerLabel", "LabelControl", "Worker", 1, 0 , "Deadline Worker version to use on Conductor", False )
-        self.deadlinePackageCombo = self.AddControlToGrid( "WorkerBox", "ComboControl", "", 1, 1 )
+        self.nativeJobCheckBox = self.AddSelectionControlToGrid( "IsNative", "CheckBoxControl", False, "Native", 1, 0, "A native job won't launch a Deadline worker. Job will be only appear in the Conductor Dashboard" )
+        self.AddControlToGrid( "WorkerLabel", "LabelControl", "Worker", 2, 0 , "Deadline Worker version to use on Conductor", False )
+        self.deadlinePackageCombo = self.AddControlToGrid( "WorkerBox", "ComboControl", "", 2, 1 )
         
-        self.AddControlToGrid( "DCCLabel", "LabelControl", "DCC", 2, 0 , "DCC package to use on Conductor", False )
-        self.dccPackageCombo = self.AddControlToGrid( "PackageBox", "ComboControl", "", 2, 1 )
+        self.AddControlToGrid( "DCCLabel", "LabelControl", "DCC", 3, 0 , "DCC package to use on Conductor", False )
+        self.dccPackageCombo = self.AddControlToGrid( "PackageBox", "ComboControl", "", 3, 1 )
+        self.dccPackageCombo.activated.connect( self.onDCCChanged )
         
-        self.AddControlToGrid( "PluginLabel", "LabelControl", "Plugins", 3, 0 , "Plugins to enable on Conductor", False )
-        self.pluginPackagesCombo = self.AddControlToGrid( "PluginPackageBox", "MultiSelectListControl", "", 3, 1 )       
+        self.AddControlToGrid( "PluginLabel", "LabelControl", "Plugins", 4, 0 , "Plugins to enable on Conductor", False )
+        self.pluginPackagesCombo = self.AddControlToGrid( "PluginPackageBox", "MultiSelectListControl", "", 4, 1 )       
         
         self.EndGrid()        
         
@@ -125,11 +128,9 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         packages = ciocore.api_client.request_software_packages()
         
         # Deadline worker
-        deadline_packages = ciocore.package_tree.PackageTree(packages, product="deadline")
-        
-        for deadline_package in deadline_packages.supported_host_names():
-            self.deadlinePackageCombo.addItem(deadline_package)
-            
+        deadline_packages = ciocore.package_tree.PackageTree(packages, product="deadline")        
+        self.deadlinePackageCombo.insertItems(0, deadline_packages.supported_host_names())
+         
         if os.environ.get('CONDUCTOR_DEADLINE_WORKER_VERSION'):
             self.deadlinePackageCombo.setCurrentText("deadline {} linux".format( os.environ.get('CONDUCTOR_DEADLINE_WORKER_VERSION')))
         
@@ -138,9 +139,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         # DCC Host
         product_name = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.get_mapping_class(self.deadlineJob).PRODUCT_NAME
         host_packages = ciocore.package_tree.PackageTree(packages, product=product_name)
-        
-        for host_package in host_packages.supported_host_names():
-            self.dccPackageCombo.addItem(host_package)
+        self.dccPackageCombo.insertItems(0, host_packages.supported_host_names())
             
         dcc_host = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.get_mapping_class(self.deadlineJob).get_host_package(self.deadlineJob)
         
@@ -153,17 +152,15 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
             plugin_package_names.sort()
          
             # DCC Plugins 
-            for plugin_package in plugin_package_names:
-                self.pluginPackagesCombo.addItem(plugin_package)
+            self.pluginPackagesCombo.insertItems(0, plugin_package_names)
                 
             plugins = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.get_mapping_class(self.deadlineJob).get_plugins(self.deadlineJob, dcc_host)
             default_plugin_package_names = [ciocore.package_tree.to_name(plugin_package) for plugin_package in plugins]
             
-            print ("Setting values to: {}".format(default_plugin_package_names))
             self.SetValue("PluginPackageBox", default_plugin_package_names)
             
         else:
-            print ("WARNING: The Deadlie Package Mapper did not return a valid host package")
+            print ("WARNING: The Deadline Package Mapper did not return a valid host package")
       
     def onSelectSidecarFileButton(self):
         
@@ -184,20 +181,51 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
 
         try:
             
+            if self.nativeJobCheckBox.isChecked():
+                
+                deadline_mapper = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.get_mapping_class(self.deadlineJob)
+                
+                host_package = deadline_mapper.get_host_package(self.deadlineJob)
+                renderer_package = deadline_mapper.get_renderer_package(self.deadlineJob, host_package)
+                self.conductorJob = conductorjob.MayaRenderJob()
+                self.conductorJob.renderer = renderer_package['product']
+                self.conductorJob.scene_path = self.deadlineJob.GetJobPluginInfoKeyValue("SceneFile") 
+                self.conductorJob.project_path = self.deadlineJob.GetJobPluginInfoKeyValue("ProjectPath")
+                self.conductorJob.frames = cioseq.sequence.Sequence.create(self.deadlineJob.GetJobInfoKeyValue("Frames"))
+                self.conductorJob.render_layer = self.deadlineJob.GetJobPluginInfoKeyValue("RenderLayer") or self.conductorJob.render_layer
+                self.conductorJob.chunk_size = 1
+                self.conductorJob.local_upload = False
+
+            else:
+                
+                self.conductorJob = conductorjob.DeadlineWorkerJob()
+                self.conductorJob.deadline_proxy_root = os.environ.get('CONDUCTOR_DEADLINE_PROXY')
+                self.conductorJob.set_deadline_ssl_certificate(os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE', ""))
+                self.conductorJob.deadline_use_ssl = self.to_bool(os.environ.get('CONDUCTOR_DEADLINE_USE_SSL', ""))
+                
+                groupName = "conductorautogroup_{}".format(self.deadlineJob.JobId)
+                groups = list(Deadline.Scripting.RepositoryUtils.GetGroupNames())
+                
+                if groupName in groups:
+                    Deadline.Scripting.RepositoryUtils.DeleteGroup(groupName)
+                
+                Deadline.Scripting.RepositoryUtils.AddGroup(groupName)
+        
+                self.deadlineJob.JobGroup = groupName
+                self.conductorJob.deadline_group_name = groupName
+                
+                self.deadlineJob.JobPostTaskScript = self.conductorJob.get_post_task_script_path()
+                Deadline.Scripting.RepositoryUtils.SaveJob(self.deadlineJob)             
+            
             self.conductorJob.environment['DEADLINE_JOBID'] = self.deadlineJob.JobId
             self.conductorJob.instance_type = self.selectedInstanceType
             self.conductorJob.instance_count = self.deadlineJob.TaskCount
             self.conductorJob.job_title = self.jobNameTextBox.text()            
             self.conductorJob.preemptible = self.preemptibleCheckBox.isChecked()       
             self.conductorJob.project = self.projectBox.currentText() 
-            
-            self.conductorJob.deadline_proxy_root = os.environ.get('CONDUCTOR_DEADLINE_PROXY')
-            self.conductorJob.set_deadline_ssl_certificate(os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE', ""))
-            self.conductorJob.deadline_use_ssl = self.to_bool(os.environ.get('CONDUCTOR_DEADLINE_USE_SSL', ""))
+            self.conductorJob.software_packages = self.getSoftwarePackages()            
             self.conductorJob.upload_paths.append(self.deadlineJob.GetJobPluginInfoKeyValue('SceneFile'))
 
-            #self.conductorJob.software_packages = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.map(self.deadlineJob)
-            self.conductorJob.software_packages = self.getSoftwarePackages()
             self.conductorJob.output_path = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.get_output_path(self.deadlineJob)                  
                 
             dependencySidecarPath = self.dependencyBox.text()
@@ -212,24 +240,11 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
 
     
             self.conductorJob.upload_paths.extend(dependencies)
-            
-            groupName = "conductorautogroup_{}".format(self.deadlineJob.JobId)
-            groups = list(Deadline.Scripting.RepositoryUtils.GetGroupNames())
-            
-            if groupName in groups:
-                Deadline.Scripting.RepositoryUtils.DeleteGroup(groupName)
-            
-            Deadline.Scripting.RepositoryUtils.AddGroup(groupName)
-    
-            self.deadlineJob.JobGroup = groupName
-            self.conductorJob.deadline_group_name = groupName
 
             conductorJobId = self.conductorJob.submit_job()
             
             # This script is present on the Deadline worker
-            self.deadlineJob.JobPostTaskScript = self.conductorJob.get_post_task_script_path()
-            Deadline.Scripting.RepositoryUtils.SaveJob(self.deadlineJob)
-            PyQt5.QtWidgets.QMessageBox.information(self, "Job Submitted", "Job {} has been sucesffully submitted to Conductor".format(conductorJobId))
+            PyQt5.QtWidgets.QMessageBox.information(self, "Job Submitted", "Job {} has been successfully submitted to Conductor".format(conductorJobId))
 
         except Exception as errMsg:
             error_dialog = ConductorErrorDialog(errMsg)
@@ -249,14 +264,45 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         for instanceType in self.instanceTypes:
             if instanceValue == instanceType['description']:
                 self.selectedInstanceType = instanceType['name']
+
+    def onDCCChanged(self):
+        dcc_host_name = self.dccPackageCombo.currentText()
+        self.update_plugin_packages(dcc_host_name)
+
+    def update_plugin_packages(self, dcc_package_name):
+
+        packages = ciocore.api_client.request_software_packages()
+        package_tree = ciocore.package_tree.PackageTree(packages)
+
+        host_package = package_tree.find_by_name(dcc_package_name)
+        
+        plugin_package_names = [ciocore.package_tree.to_name(plugin_package) for plugin_package in host_package['children']]
+        plugin_package_names.sort()
+        
+        # DCC Plugins
+        self.pluginPackagesCombo.clear()
+        self.pluginPackagesCombo.insertItems(0, plugin_package_names)        
+        
+        try:
+            plugins = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.get_mapping_class(self.deadlineJob).get_plugins(self.deadlineJob, host_package)
+
+        except Exception as errMsg:         
+            error_dialog = ConductorErrorDialog(errMsg)
+            error_dialog.exec_()            
+            #super( ConductorSubmitDialog, self ).reject()
+            raise
+        
+        default_plugin_package_names = [ciocore.package_tree.to_name(plugin_package) for plugin_package in plugins]
+        
+        self.SetValue("PluginPackageBox", default_plugin_package_names)
                 
     def getInstances(self):
         from ciocore import data as coredata
         coredata.init(product="all")
         tree_data = coredata.data()["instance_types"]
+
         instances = [i for i in tree_data if i['operating_system'] == 'linux']
         instances = sorted(instances, key=operator.itemgetter("cores", "memory"), reverse=False)
-        
         return instances
                 
     def getDependencySidecarFileFromPath(self):
@@ -278,6 +324,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         
         # The package for the Deadline Worker is explicit
         self.conductorJob.deadline_worker_package = package_tree.find_by_name(self.GetValue("WorkerBox"))
+        
         for package_name in package_names:
             package = package_tree.find_by_name(package_name)
             
@@ -307,4 +354,3 @@ def __main__( *args ):
     except Exception as errMsg:
         error_dialog = ConductorErrorDialog(errMsg)
         error_dialog.exec_()
-        

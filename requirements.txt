@@ -1,0 +1,3 @@
+ciocore>=5.4, <6
+cioseq>=0.1.15, <1
+ciopath>1, < 2
