@@ -82,8 +82,6 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
         # Map the info from the Deadline Job plugin to a Conductor friendly name
         conductor_render_plugin = cls.render_version_map[render_name]
 
-        #LOG.debug("Searching for '{}' in {}".format(conductor_render_plugin['plugin'], host_package['children']))
-        
         render_plugins = {}        
         for plugin in host_package['children']:
 
@@ -93,12 +91,18 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
                 render_plugins[plugin_version] = plugin        
                    
         render_plugin_versions = list(render_plugins.keys())
-        LOG.debug("Render plugins (presort): {}".format(render_plugin_versions))        
         render_plugin_versions.sort()                
-        LOG.debug("Render plugins (post-sort): {}".format(render_plugin_versions))
         
         # Always use the latest version of the render plugin
         if conductor_render_plugin['version'] == 'latest':
+
+            if not render_plugin_versions:
+                print( host_package)
+                raise deadline_plugin_mapper.NoPackagesFoundError("Unable to find any versions of {} for {} {}-{} available on Conductor".format( render_name.capitalize(), 
+                                                                                                                host_package['product'].capitalize(),
+                                                                                                                host_package['major_version'],
+                                                                                                                host_package['minor_version']  ))
+
             render_plugin = render_plugins[render_plugin_versions[-1]]
             
         else:
