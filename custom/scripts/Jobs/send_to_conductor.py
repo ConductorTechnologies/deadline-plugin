@@ -301,9 +301,10 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         coredata.init(product="all")
         tree_data = coredata.data()["instance_types"]
 
-        instances = [i for i in tree_data if i['operating_system'] == 'linux']
+        instances = [i for i in tree_data.instance_types.values() if i['operating_system'] == 'linux']
         instances = sorted(instances, key=operator.itemgetter("cores", "memory"), reverse=False)
-        return instances
+        
+	return instances
                 
     def getDependencySidecarFileFromPath(self):
         scenePath = self.deadlineJob.GetJobPluginInfoKeyValue('SceneFile')            
