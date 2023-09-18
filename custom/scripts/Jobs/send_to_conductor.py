@@ -53,10 +53,6 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         self._buildUI()
         
     def _buildUI(self):
-
-        self.instanceTypes = self.getInstances()
-        
-        projects = ciocore.api_client.request_projects()
         
         self.resize(700, 225)
         
@@ -105,7 +101,11 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         okButton.clicked.connect( self.onOKButtonClicked )
         cancelButton = self.AddControlToGrid( "CancelButton", "ButtonControl", "Cancel", 0, 2, expand=False )
         cancelButton.clicked.connect( self.onCancelButtonClicked )
-        self.EndGrid()        
+        self.EndGrid()
+
+        self.instanceTypes = self.getInstances()
+        
+        projects = ciocore.api_client.request_projects()        
 
         # Populate the instance Combo box
         for instanceType in self.instanceTypes:
@@ -221,7 +221,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
             self.conductorJob.instance_type = self.selectedInstanceType
             self.conductorJob.instance_count = self.deadlineJob.TaskCount
             self.conductorJob.job_title = self.jobNameTextBox.text()            
-            self.conductorJob.preemptible = self.preemptibleCheckBox.isChecked()       
+            self.conductorJob.preemptible = (self.cloud_provider != "CW" and self.preemptibleCheckBox.isChecked())
             self.conductorJob.project = self.projectBox.currentText() 
             self.conductorJob.software_packages = self.getSoftwarePackages()            
             self.conductorJob.upload_paths.append(self.deadlineJob.GetJobPluginInfoKeyValue('SceneFile'))
@@ -303,8 +303,13 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
 
         instances = [i for i in tree_data.instance_types.values() if i['operating_system'] == 'linux']
         instances = sorted(instances, key=operator.itemgetter("cores", "memory"), reverse=False)
+
+        #self.cloud_provider = instances.get_cloud_provider()
+        self.cloud_provider = "CW"
+
+        self.preemptibleCheckBox.setVisible(self.cloud_provider != "CW")
         
-	return instances
+        return instances
                 
     def getDependencySidecarFileFromPath(self):
         scenePath = self.deadlineJob.GetJobPluginInfoKeyValue('SceneFile')            
