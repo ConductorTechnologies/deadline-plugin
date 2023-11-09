@@ -27,10 +27,13 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
     product_version_map = {"2018": "maya-io 2018.SP6 linux",
                            "2019": "maya-io 2019.SP2 linux",
                            "2020": "maya-io 2020.SP4 linux",
-                           "2022": "maya-io 2022.SP3 linux"} # There's an error with the arnold package for 2019 that needs to be resolved
+                           "2022": "maya-io 2022.SP3 linux",
+                           "2023": "maya-io 2023.SP3 linux",
+                           "2024": "maya-io 2024 SP1 linux"} # There's an error with the arnold package for 2019 that needs to be resolved
     render_version_map = {'arnold': {'plugin': 'arnold-maya', 'version': 'latest'},
                           'vray': {'plugin': 'v-ray-maya', 'version': 'latest'},
-                          'renderman': {'plugin': 'renderman-maya', 'version': 'latest'}}
+                          'renderman': {'plugin': 'renderman-maya', 'version': 'latest'},
+                          'redshift': {'plugin': 'redshift-maya', 'version': 'latest'}}
     
     @classmethod
     def get_host_package(cls, deadline_job):
