@@ -29,7 +29,7 @@ class ConductorErrorDialog(PyQt5.QtWidgets.QMessageBox):
         self.setIcon(PyQt5.QtWidgets.QMessageBox.Critical)
         
         # For the dialog to be a certain width
-        exception = "{:200}".format(exception)
+        exception = "{:200}".format(str(exception))
 
         self.setWindowTitle("Submit to Conductor - Error")
         self.setText(str(exception))
@@ -76,7 +76,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         self.AddControlToGrid( "Separator2", "SeparatorControl", "Instance", 0, 0, colSpan=3 )
         self.AddControlToGrid( "InstanceLabel", "LabelControl", "Type", 1, 0 , "The type of instance the job will run on", False )
         self.instanceTypeCombo = self.AddControlToGrid( "InstanceBox", "ComboControl", "", 1, 1 )        
-        self.preemptibleCheckBox = self.AddSelectionControlToGrid( "IsPreemptible", "CheckBoxControl", True, "Preemptible", 1, 2, "The machine may get preempted" )
+        self.spotCheckBox = self.AddSelectionControlToGrid( "IsSpot", "CheckBoxControl", True, "Spot", 1, 2, "The machine may get preempted" )
         self.EndGrid()
         
         self.AddGrid()
@@ -221,17 +221,17 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
             self.conductorJob.instance_type = self.selectedInstanceType
             self.conductorJob.instance_count = self.deadlineJob.TaskCount
             self.conductorJob.job_title = self.jobNameTextBox.text()            
-            self.conductorJob.preemptible = (self.cloud_provider != "CW" and self.preemptibleCheckBox.isChecked())
+            self.conductorJob.preemptible = (self.cloud_provider != "cw" and self.spotCheckBox.isChecked())
             self.conductorJob.project = self.projectBox.currentText() 
             self.conductorJob.software_packages = self.getSoftwarePackages()            
             self.conductorJob.upload_paths.append(self.deadlineJob.GetJobPluginInfoKeyValue('SceneFile'))
 
             self.conductorJob.output_path = conductor_deadline.package_mapper.DeadlineToConductorPackageMapper.get_output_path(self.deadlineJob)                  
-                
+
             dependencySidecarPath = self.dependencyBox.text()
-            
+
             dependencies = []
-            
+
             # If a command is being executed that doesn't require any files, the submission shouldn't
             # fail
             if dependencySidecarPath:
@@ -240,7 +240,6 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
 
     
             self.conductorJob.upload_paths.extend(dependencies)
-
             conductorJobId = self.conductorJob.submit_job()
             
             # This script is present on the Deadline worker
@@ -304,10 +303,8 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         instances = [i for i in tree_data.instance_types.values() if i['operating_system'] == 'linux']
         instances = sorted(instances, key=operator.itemgetter("cores", "memory"), reverse=False)
 
-        #self.cloud_provider = instances.get_cloud_provider()
-        self.cloud_provider = "CW"
-
-        self.preemptibleCheckBox.setVisible(self.cloud_provider != "CW")
+        self.cloud_provider = tree_data.provider 
+        self.spotCheckBox.setVisible(self.cloud_provider != "cw")
         
         return instances
                 
