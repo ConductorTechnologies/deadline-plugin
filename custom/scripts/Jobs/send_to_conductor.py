@@ -269,7 +269,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
             self.conductorJob.instance_count = self.deadlineJob.TaskCount
             self.conductorJob.job_title = self.jobNameTextBox.text()
             self.conductorJob.preemptible = (
-                self.cloudProvider != "cw" and self.spotCheckBox.isChecked())
+                (not self.isCoreweave(self.cloudProvider)) and self.spotCheckBox.isChecked())
             self.conductorJob.project = self.projectBox.currentText()
             self.conductorJob.software_packages = self.getSoftwarePackages()
             self.conductorJob.upload_paths.append(
@@ -359,7 +359,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
             "cores", "memory"), reverse=False)
 
         self.cloud_provider = tree_data.provider
-        self.spotCheckBox.setVisible(self.cloudProvider != "cw")
+        self.spotCheckBox.setVisible(not self.isCoreweave(self.cloudProvider))
 
         return instances
 
@@ -398,6 +398,14 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
     @staticmethod
     def to_bool(value):
         return value.lower() not in ('0', 'false', 'no')
+
+    @staticmethod
+    def isCoreweave(provider):
+        '''
+        Returns whether the given provider is CoreWeave
+        '''
+
+        return provider == "cw"
 
 
 def __main__(*args):
