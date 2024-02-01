@@ -71,7 +71,9 @@ class DeadlineWorkerJob(WorkerJob):
         self.environment['CONDUCTOR_DEADLINE_SHOW_WATCHER_DEBUG'] = "1"
         
         if self.deadline_use_ssl:
-            self.environment['DCONFIG_ProxySSLCertificate'] = self.deadline_ssl_certificate
+            self.environment['DCONFIG_ProxySSLCertificate'] = ciocore.file_utils.strip_drive_letter(
+                                                                ciocore.file_utils.conform_platform_filepath(self.deadline_ssl_certificate)
+                                                              )
         
         return super(WorkerJob, self)._get_environment()
     
