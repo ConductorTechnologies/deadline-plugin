@@ -5,6 +5,7 @@ import conductor_job as conductorjob
 import cioseq.sequence
 import ciocore.package_tree
 import ciocore
+import ciocore.data
 from DeadlineUI.Controls.Scripting.DeadlineScriptDialog import DeadlineScriptDialog
 import Deadline.Scripting
 import os
@@ -43,6 +44,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         self.selectedInstanceType = None
         self.jobTitle = ""
         self.instanceTypes = []
+        self.plugin_packages = {}
 
         self.conductorJob = None
         self.cloudProvider = None
@@ -177,8 +179,10 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
             self.dccPackageCombo.setCurrentText(dcc_package_name)
             print("Setting values to: {}".format(dcc_package_name))
 
-            plugin_package_names = [ciocore.package_tree.to_name(
-                plugin_package) for plugin_package in dcc_host['children']]
+            self.plugin_packages  = {ciocore.package_tree.to_name(
+            plugin_package):plugin_package for plugin_package in dcc_host['children']}
+
+            plugin_package_names = list(self.plugin_packages.keys())
             plugin_package_names.sort()
 
             # DCC Plugins
@@ -246,8 +250,11 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
                 self.conductorJob.set_deadline_ssl_certificate(
                     os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE', ""))
                 self.conductorJob.deadline_use_ssl = self.to_bool(
-                    os.environ.get('CONDUCTOR_DEADLINE_USE_SSL', ""))
+                    os.environ.get('CONDUCTOR_DEADLINE_SSL_CERTIFICATE', "false"))
 
+                self.conductorJob.deadline_worker_version = self.GetValue("WorkerBox").split(" ")[1]
+                print ("Using Deadline Worker version: {}".format(self.conductorJob.deadline_worker_version))
+                
                 groupName = "conductorautogroup_{}".format(
                     self.deadlineJob.JobId)
                 groups = list(
@@ -272,6 +279,7 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
                 (not self.isCoreweave(self.cloudProvider)) and self.spotCheckBox.isChecked())
             self.conductorJob.project = self.projectBox.currentText()
             self.conductorJob.software_packages = self.getSoftwarePackages()
+
             self.conductorJob.upload_paths.append(
                 self.deadlineJob.GetJobPluginInfoKeyValue('SceneFile'))
 
@@ -325,8 +333,10 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
 
         host_package = package_tree.find_by_name(dcc_package_name)
 
-        plugin_package_names = [ciocore.package_tree.to_name(
-            plugin_package) for plugin_package in host_package['children']]
+        self.plugin_packages  = {ciocore.package_tree.to_name(
+            plugin_package):plugin_package for plugin_package in host_package['children']}
+
+        plugin_package_names = list(self.plugin_packages.keys())
         plugin_package_names.sort()
 
         # DCC Plugins
@@ -349,16 +359,16 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
         self.SetValue("PluginPackageBox", default_plugin_package_names)
 
     def getInstances(self):
-        from ciocore import data as coredata
-        coredata.init(product="all")
-        tree_data = coredata.data()["instance_types"]
+
+        ciocore.data.init()
+        tree_data = ciocore.data.data()["instance_types"]
 
         instances = [i for i in tree_data.instance_types.values()
                      if i['operating_system'] == 'linux']
         instances = sorted(instances, key=operator.itemgetter(
             "cores", "memory"), reverse=False)
 
-        self.cloud_provider = tree_data.provider
+        self.cloudProvider = tree_data.provider
         self.spotCheckBox.setVisible(not self.isCoreweave(self.cloudProvider))
 
         return instances
@@ -370,29 +380,19 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
 
     def getSoftwarePackages(self):
 
-        package_names = [self.GetValue("PackageBox")]
-
-        package_names.extend(self.GetValue("PluginPackageBox"))
-
-        selected_packages = []
-
-        # Add packages to the controls
         packages = ciocore.api_client.request_software_packages()
         package_tree = ciocore.package_tree.PackageTree(packages)
+
+        host_package =  package_tree.find_by_name(self.GetValue("PackageBox"))
+        selected_packages = [host_package]
+
+        for plugin_package_name in self.GetValue("PluginPackageBox"):
+            selected_packages.append(self.plugin_packages[plugin_package_name])
 
         # The package for the Deadline Worker is explicit
         self.conductorJob.deadline_worker_package = package_tree.find_by_name(
             self.GetValue("WorkerBox"))
-
-        for package_name in package_names:
-            package = package_tree.find_by_name(package_name)
-
-            if package is None:
-                raise ValueError(
-                    "Unable to find a package for '{}'".format(package_name))
-
-            selected_packages.append(package)
-
+        
         return selected_packages
 
     @staticmethod
