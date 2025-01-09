@@ -1,1 +1,3 @@
 ciocore>=7.0.2, < 8
+cioseq
+ciopath
