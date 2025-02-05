@@ -12,7 +12,7 @@ class MayaRenderJob(job.Job):
         PRODUCT_TO_RENDERER_MAPPING = {"arnold-maya":"arnold",
                                        "renderman-maya": "renderman",
                                        "redshift-maya": "redshift",
-                                       "vray-maya": "vray"}
+                                       "v-ray-maya": "vray"}
     
         def __init__(self, scene_path=None, project_path=None, *args , **kwargs):
             
