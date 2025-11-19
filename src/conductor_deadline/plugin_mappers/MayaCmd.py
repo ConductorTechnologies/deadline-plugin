@@ -29,7 +29,8 @@ class MayaCmdMapper(deadline_plugin_mapper.DeadlinePluginMapper):
                            "2020": "maya-io 2020.SP4 linux",
                            "2022": "maya-io 2022.SP3 linux",
                            "2023": "maya-io 2023.SP3 linux",
-                           "2024": "maya-io 2024 SP1 linux"} # There's an error with the arnold package for 2019 that needs to be resolved
+                           "2024": "maya-io 2024 SP1 linux",
+                           "2025": "maya-io 2025 SP3 linux"} 
     render_version_map = {'arnold': {'plugin': 'arnold-maya', 'version': 'latest'},
                           'vray': {'plugin': 'v-ray-maya', 'version': 'latest'},
                           'renderman': {'plugin': 'renderman-maya', 'version': 'latest'},
