@@ -6,8 +6,8 @@ LOG = logging.getLogger(__name__)
 
 class NukeRenderJob(job.Job):
     
-        # Deadline mapping class identifiers for automatic registration
-        deadline_mapping_class = ["Nuke"]
+        # Deadline plugin names for automatic registration
+        deadline_plugin_names = ["Nuke"]
         
         def __init__(self, scene_path=None, *args , **kwargs):
             

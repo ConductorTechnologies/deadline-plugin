@@ -9,9 +9,9 @@ LOG = logging.getLogger(__name__)
 
 class MayaRenderJob(job.Job):
     
-        # Deadline mapping class identifiers for automatic registration
+        # Deadline plugin names for automatic registration
         # Supports multiple deadline plugin names that map to this job type
-        deadline_mapping_class = ["MayaBatch", "MayaCmd"]
+        deadline_plugin_names = ["MayaBatch", "MayaCmd"]
         
         PRODUCT_TO_RENDERER_MAPPING = {"arnold-maya":"arnold",
                                        "renderman-maya": "renderman",

@@ -17,34 +17,34 @@ class Job(object):
     # Class-level registry to store child classes
     _registry = {}
     
-    # Optional: Override this in child classes to specify the deadline mapping(s)
+    # Optional: Override this in child classes to specify the deadline plugin name(s)
     # Must be a list of strings
-    deadline_mapping_class = None
+    deadline_plugin_names = None
     
     def __init_subclass__(cls, **kwargs):
         """
         Automatically register child classes when they are defined.
-        Child classes should define a 'deadline_mapping_class' attribute
-        as a list of deadline class names they handle.
+        Child classes should define a 'deadline_plugin_names' attribute
+        as a list of deadline plugin names they handle.
         
         Example:
-            deadline_mapping_class = ["MayaBatch", "MayaRender"]
+            deadline_plugin_names = ["MayaBatch", "MayaRender"]
         """
         super().__init_subclass__(**kwargs)
         
-        # Register the child class if it has a deadline_mapping_class defined
-        if cls.deadline_mapping_class is not None:
-            # Expect a list of mappings
-            if not isinstance(cls.deadline_mapping_class, (list, tuple)):
+        # Register the child class if it has deadline_plugin_names defined
+        if cls.deadline_plugin_names is not None:
+            # Expect a list of plugin names
+            if not isinstance(cls.deadline_plugin_names, (list, tuple)):
                 raise TypeError(
-                    f"{cls.__name__}.deadline_mapping_class must be a list or tuple, "
-                    f"got {type(cls.deadline_mapping_class).__name__}"
+                    f"{cls.__name__}.deadline_plugin_names must be a list or tuple, "
+                    f"got {type(cls.deadline_plugin_names).__name__}"
                 )
             
-            # Register the class for each mapping
-            for mapping in cls.deadline_mapping_class:
-                Job._registry[mapping] = cls
-                LOG.debug(f"Registered {cls.__name__} for deadline mapping: {mapping}")
+            # Register the class for each plugin name
+            for plugin_name in cls.deadline_plugin_names:
+                Job._registry[plugin_name] = cls
+                LOG.debug(f"Registered {cls.__name__} for deadline plugin: {plugin_name}")
     
     def __init__(self):
         
@@ -196,16 +196,16 @@ class Job(object):
         self.user = value
     
     @classmethod
-    def create_from_deadline_plugin(cls, deadline_mapping_class):
+    def create_from_deadline_plugin(cls, deadline_plugin_name):
         '''
         A factory helper method to choose the appropriate child class based on
         the deadline plugin name.
         
         This method automatically discovers the appropriate Job subclass based on
-        the deadline_mapping_class attribute defined in each child class.
+        the deadline_plugin_names attribute defined in each child class.
         
-        :param deadline_mapping_class: The deadline plugin name identifier
-        :type deadline_mapping_class: str
+        :param deadline_plugin_name: The deadline plugin name identifier
+        :type deadline_plugin_name: str
         
         :return: The Job class that matches the given deadline plugin
         :rtype: A child class of :class: `Job`
@@ -213,15 +213,15 @@ class Job(object):
         :raises JobError: If no matching class is found in the registry
         '''
         
-        if deadline_mapping_class in cls._registry:
-            return cls._registry[deadline_mapping_class]
+        if deadline_plugin_name in cls._registry:
+            return cls._registry[deadline_plugin_name]
         
         # If exact match not found, log available options for debugging
-        available_mappings = list(cls._registry.keys())
-        LOG.error(f"Unable to match deadline mapping '{deadline_mapping_class}' to an appropriate class")
-        LOG.error(f"Available mappings: {available_mappings}")
+        available_plugins = list(cls._registry.keys())
+        LOG.error(f"Unable to match deadline plugin '{deadline_plugin_name}' to an appropriate class")
+        LOG.error(f"Available plugins: {available_plugins}")
         
         raise JobError(
-            f"Unable to match the deadline mapping '{deadline_mapping_class}' to an appropriate class. "
-            f"Available mappings: {available_mappings}"
+            f"Unable to match the deadline plugin '{deadline_plugin_name}' to an appropriate class. "
+            f"Available plugins: {available_plugins}"
         )

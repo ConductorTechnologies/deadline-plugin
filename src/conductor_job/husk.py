@@ -8,9 +8,9 @@ LOG = logging.getLogger(__name__)
 
 class HuskRenderJob(job.Job):
     
-        # Deadline mapping class identifiers for automatic registration
+        # Deadline plugin names for automatic registration
         # Husk can be submitted through different deadline plugins
-        deadline_mapping_class = ["Husk", "HuskStandalone"]
+        deadline_plugin_names = ["Husk", "HuskStandalone"]
         
         def __init__(self, scene_path=None, *args , **kwargs):
             
