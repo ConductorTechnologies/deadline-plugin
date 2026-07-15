@@ -14,6 +14,38 @@ class JobError(Exception):
 
 class Job(object):
     
+    # Class-level registry to store child classes
+    _registry = {}
+    
+    # Optional: Override this in child classes to specify the deadline plugin name(s)
+    # Must be a list of strings
+    deadline_plugin_names = None
+    
+    def __init_subclass__(cls, **kwargs):
+        """
+        Automatically register child classes when they are defined.
+        Child classes should define a 'deadline_plugin_names' attribute
+        as a list of deadline plugin names they handle.
+        
+        Example:
+            deadline_plugin_names = ["MayaBatch", "MayaRender"]
+        """
+        super().__init_subclass__(**kwargs)
+        
+        # Register the child class if it has deadline_plugin_names defined
+        if cls.deadline_plugin_names is not None:
+            # Expect a list of plugin names
+            if not isinstance(cls.deadline_plugin_names, (list, tuple)):
+                raise TypeError(
+                    f"{cls.__name__}.deadline_plugin_names must be a list or tuple, "
+                    f"got {type(cls.deadline_plugin_names).__name__}"
+                )
+            
+            # Register the class for each plugin name
+            for plugin_name in cls.deadline_plugin_names:
+                Job._registry[plugin_name] = cls
+                LOG.debug(f"Registered {cls.__name__} for deadline plugin: {plugin_name}")
+    
     def __init__(self):
         
         self._core_data = None
@@ -164,22 +196,32 @@ class Job(object):
         self.user = value
     
     @classmethod
-    def get_klass(cls, cmd):
+    def create_from_deadline_plugin(cls, deadline_plugin_name):
         '''
         A factory helper method to choose the appropriate child class based on
-        the provided command.
+        the deadline plugin name.
         
-        :param cmd: The command to get the corresponding class for
-        :type cmd: str
+        This method automatically discovers the appropriate Job subclass based on
+        the deadline_plugin_names attribute defined in each child class.
         
-        :retrun: The Job that matches the given command
+        :param deadline_plugin_name: The deadline plugin name identifier
+        :type deadline_plugin_name: str
+        
+        :return: The Job class that matches the given deadline plugin
         :rtype: A child class of :class: `Job`
+        
+        :raises JobError: If no matching class is found in the registry
         '''
         
-        from . import MayaRenderJob
+        if deadline_plugin_name in cls._registry:
+            return cls._registry[deadline_plugin_name]
         
-        if "Render" in cmd:
-            return MayaRenderJob
+        # If exact match not found, log available options for debugging
+        available_plugins = list(cls._registry.keys())
+        LOG.error(f"Unable to match deadline plugin '{deadline_plugin_name}' to an appropriate class")
+        LOG.error(f"Available plugins: {available_plugins}")
         
-        else:
-            raise JobError("Unable to match the command '{}' to an appropriate class".format(cmd))
+        raise JobError(
+            f"Unable to match the deadline plugin '{deadline_plugin_name}' to an appropriate class. "
+            f"Available plugins: {available_plugins}"
+        )

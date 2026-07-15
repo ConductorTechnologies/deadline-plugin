@@ -6,6 +6,9 @@ LOG = logging.getLogger(__name__)
 
 class NukeRenderJob(job.Job):
     
+        # Deadline plugin names for automatic registration
+        deadline_plugin_names = ["Nuke"]
+        
         def __init__(self, scene_path=None, *args , **kwargs):
             
             super(NukeRenderJob, self).__init__(*args, **kwargs)

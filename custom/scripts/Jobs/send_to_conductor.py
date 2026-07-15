@@ -229,7 +229,12 @@ class ConductorSubmitDialog(DeadlineScriptDialog):
                     self.deadlineJob)
                 renderer_package = deadline_mapper.get_renderer_package(
                     self.deadlineJob, host_package)
-                self.conductorJob = conductorjob.MayaRenderJob()
+                
+                # Use factory method to determine the appropriate Job class based on deadline plugin
+                plugin_name = self.deadlineJob.GetJobInfoKeyValue("Plugin")
+                JobClass = conductorjob.Job.create_from_deadline_plugin(plugin_name)
+                self.conductorJob = JobClass()
+                
                 self.conductorJob.renderer = renderer_package['product']
                 self.conductorJob.scene_path = self.deadlineJob.GetJobPluginInfoKeyValue(
                     "SceneFile")
